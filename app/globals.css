@@ -1,0 +1,113 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 237, 237, 237;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: #000000;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: #00F0FF;
+  color: #000;
+}
+
+/* Aurora Background Layer */
+.aurora-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background: #000;
+  overflow: hidden;
+}
+
+.aurora-blob {
+  position: absolute;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: aurora 20s infinite alternate;
+  border-radius: 100%;
+}
+
+.blob-1 {
+  top: -10%;
+  left: -10%;
+  width: 50vw;
+  height: 50vh;
+  background: radial-gradient(circle, rgba(112, 0, 255, 0.15), transparent);
+}
+
+.blob-2 {
+  bottom: -10%;
+  right: -10%;
+  width: 60vw;
+  height: 60vh;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.1), transparent);
+  animation-delay: -5s;
+}
+
+.blob-3 {
+  top: 40%;
+  left: 40%;
+  width: 40vw;
+  height: 40vh;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.03), transparent);
+  animation-delay: -10s;
+}
+
+/* Grid Pattern Definition */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+
+/* Fixed Full Screen Grid */
+.bg-grid-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000;
+}
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00F0FF;
+}
+
+/* Text Glows */
+.text-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+.text-glow-cyan {
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+}
+.text-glow-violet {
+  text-shadow: 0 0 20px rgba(112, 0, 255, 0.5);
+}

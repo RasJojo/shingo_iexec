@@ -1,0 +1,66 @@
+import { Trader } from '@/types';
+
+export const TRADERS: Trader[] = [
+  {
+    id: '1',
+    handle: 'Sui_Whale_V2',
+    avatar: 'https://picsum.photos/seed/1/200',
+    pnl30d: 142.5,
+    pnlTotal: 842.5,
+    winRate: 72,
+    drawdown: 12.4,
+    subscribers: 3420,
+    riskLevel: 'Balanced',
+    strategyTags: ['SCALP', 'SUI', 'DEFI'],
+    description: 'Deep liquidity provider strategies on Cetus. Accumulating SUI long term.',
+    subscriptionPrice: 15,
+    isVerified: true,
+    assets: ['SUI', 'CETUS']
+  },
+  {
+    id: '2',
+    handle: 'Navx_Bot_Alpha',
+    avatar: 'https://picsum.photos/seed/2/200',
+    pnl30d: 312.2,
+    pnlTotal: 1250.0,
+    winRate: 65,
+    drawdown: 25.5,
+    subscribers: 1250,
+    riskLevel: 'Aggressive',
+    strategyTags: ['LEVERAGE', 'NAVX'],
+    description: 'High volatility plays on ecosystem tokens. Not for the faint of heart.',
+    subscriptionPrice: 30,
+    isVerified: true,
+    assets: ['NAVX', 'SCA']
+  },
+  {
+    id: '3',
+    handle: 'Stable_Farmer',
+    avatar: 'https://picsum.photos/seed/3/200',
+    pnl30d: 12.4,
+    pnlTotal: 45.2,
+    winRate: 95,
+    drawdown: 1.2,
+    subscribers: 890,
+    riskLevel: 'Conservative',
+    strategyTags: ['YIELD', 'LST'],
+    description: 'Liquid Staking Token arbitrage. Low risk, consistent yield.',
+    subscriptionPrice: 5,
+    assets: ['vSUI', 'haSUI']
+  },
+  {
+    id: '4',
+    handle: 'Meme_Hunter',
+    avatar: 'https://picsum.photos/seed/4/200',
+    pnl30d: -4.5,
+    pnlTotal: 210.0,
+    winRate: 40,
+    drawdown: 45.0,
+    subscribers: 200,
+    riskLevel: 'Aggressive',
+    strategyTags: ['MEME', 'SNIPE'],
+    description: 'Chasing the next 100x on Turbos.',
+    subscriptionPrice: 10,
+    assets: ['BLUB', 'FUD']
+  },
+];

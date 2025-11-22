@@ -1,0 +1,11 @@
+[package]
+name = "notascam"
+version = "0.0.1"
+edition = "2024.beta"
+
+[addresses]
+notascam = "0x0"
+
+[dependencies]
+# Testnet framework: align rev with the Sui testnet branch/tag documented by Mysten.
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet" }
