@@ -1,18 +1,71 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Views } from '@/types';
-import { TRADERS } from '@/lib/data';
 import { Card, Badge, SectionHeader } from '@/components/ui';
 import { Search, ArrowUpRight } from 'lucide-react';
+import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
+import { SUI_PACKAGE_ID } from '@/lib/sui';
 
 export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => void }> = ({ onNavigate }) => {
   const [filterRisk, setFilterRisk] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [traders, setTraders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const client = useSuiClient();
+  const account = useCurrentAccount();
 
-  const filtered = TRADERS.filter(t => {
-    if (filterRisk && t.riskLevel !== filterRisk) return false;
-    if (searchTerm && !t.handle.toLowerCase().includes(searchTerm.toLowerCase()) && !t.strategyTags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))) return false;
-    return true;
-  });
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        // Pour l’instant : on liste les TraderCap détenues par le wallet connecté
+        const caps = await client.getOwnedObjects({
+          owner: account?.address ?? '0x0',
+          filter: { StructType: `${SUI_PACKAGE_ID}::types::TraderCap` },
+          options: { showOwner: true },
+        });
+        const mapped = (caps.data || []).map((c) => {
+          const owner = (c.owner as any)?.AddressOwner ?? 'unknown';
+          return {
+            id: c.data?.objectId ?? '',
+            handle: owner,
+            avatar: `https://api.dicebear.com/7.x/shapes/svg?seed=${owner}`,
+            pnl30d: 0,
+            pnlTotal: 0,
+            winRate: 0,
+            drawdown: 0,
+            subscribers: 0,
+            riskLevel: 'N/A',
+            strategyTags: [],
+            description: 'TraderCap on-chain',
+            subscriptionPrice: 0,
+            assets: [],
+            isVerified: true,
+          };
+        });
+        setTraders(mapped);
+      } catch (e: any) {
+        setError(e?.message ?? 'Erreur lors du chargement on-chain');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [account?.address, client]);
+
+  const filtered = useMemo(() => {
+    return traders.filter((t) => {
+      if (filterRisk && t.riskLevel !== filterRisk) return false;
+      if (
+        searchTerm &&
+        !t.handle.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !(t.strategyTags || []).some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+        return false;
+      return true;
+    });
+  }, [traders, filterRisk, searchTerm]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
@@ -53,10 +106,13 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
           </div>
       </div>
 
+      {error && <div className="text-sm text-red-400 font-mono mb-4">{error}</div>}
+      {loading && <div className="text-sm text-slate-400 font-mono mb-4">Chargement on-chain…</div>}
+
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((trader) => (
-          <Card key={trader.id} hover className="flex flex-col h-full group" onClick={() => onNavigate(Views.PROFILE, { traderId: trader.id })}>
+          <Card key={trader.id} hover className="flex flex-col h-full group" onClick={() => onNavigate(Views.PROFILE, { traderId: trader.id, traderAddr: trader.handle })}>
             <div className="p-6 flex-1 flex flex-col relative">
               {/* Accent Line */}
               <div className={`absolute top-0 left-0 w-full h-0.5 ${trader.pnl30d > 0 ? 'bg-emerald-500' : 'bg-red-500'} shadow-[0_0_10px_currentColor]`}></div>
@@ -121,6 +177,9 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
             </div>
           </Card>
         ))}
+        {filtered.length === 0 && !loading && (
+          <div className="text-slate-500 text-sm font-mono">Aucun trader on-chain détecté pour ce wallet. Enregistrez-vous via Creator Studio.</div>
+        )}
       </div>
     </div>
   );

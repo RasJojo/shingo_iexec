@@ -1,8 +1,63 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Views } from '@/types';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ConnectButton, useCurrentAccount, useSignPersonalMessage, useDisconnectWallet } from '@mysten/dapp-kit';
 
 export const ConnectWallet: React.FC<{ onNavigate: (view: Views) => void; onConnect: () => void }> = ({ onNavigate, onConnect }) => {
+  const account = useCurrentAccount();
+  const { mutateAsync: signMessage } = useSignPersonalMessage();
+  const { mutate: disconnect } = useDisconnectWallet();
+  const [signed, setSigned] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3333';
+
+  useEffect(() => {
+    if (account?.address && signed) {
+      onConnect();
+    }
+    if (!account?.address) {
+      setSigned(false);
+      localStorage.removeItem('authToken');
+    }
+  }, [account, signed, onConnect]);
+
+  const handleSign = async () => {
+    if (!account?.address) return;
+    try {
+      setLoading(true);
+      const res = await signMessage({
+        message: new TextEncoder().encode('Login to Notascam'),
+      });
+      const messageBytes = res.bytes ?? new TextEncoder().encode('Login to Notascam');
+      const messageB64 = btoa(String.fromCharCode(...messageBytes));
+      const body = {
+        wallet_address: account.address,
+        signature: res.signature,
+        message: messageB64,
+      };
+      const resp = await fetch(`${backendUrl}/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        } else {
+          console.error('Auth backend: token manquant', data);
+        }
+      } else {
+        const text = await resp.text();
+        console.error('Auth backend error', resp.status, text);
+      }
+      setSigned(true);
+    } catch (e) {
+      console.error('Signature rejetée', e);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="flex-grow flex flex-col items-center justify-center px-4 relative min-h-[60vh]">
        <button 
@@ -22,21 +77,40 @@ export const ConnectWallet: React.FC<{ onNavigate: (view: Views) => void; onConn
           </div>
 
           <div className="space-y-3">
-             {[
-                { name: 'Sui Wallet', icon: 'https://assets.coingecko.com/coins/images/26375/small/sui_asset.jpeg' },
-                { name: 'ZK Login (Google)', icon: null },
-             ].map((wallet, i) => (
-                <button 
-                   key={i}
-                   onClick={onConnect}
-                   className="group w-full flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all duration-300"
-                >
-                   <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center border border-white/10">
-                      {wallet.icon ? <img src={wallet.icon} className="w-4 h-4 rounded-full" alt={wallet.name} /> : <div className="w-4 h-4 bg-slate-700 rounded-full"></div>}
+             {!account?.address ? (
+               <div className="flex justify-center">
+                 <ConnectButton />
+               </div>
+             ) : (
+                <div className="space-y-4">
+                  <div className="text-center text-xs text-slate-400 font-mono">
+                    Connecté : <span className="text-white">{account.address}</span>
+                  </div>
+                  {!signed ? (
+                   <button 
+                      onClick={handleSign}
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all duration-300 text-sm font-mono disabled:opacity-50"
+                   >
+                      {loading ? 'Signature...' : "Signer pour s'authentifier"}
+                   </button>
+                 ) : (
+                   <div className="space-y-3">
+                     <div className="text-center text-emerald-400 text-sm font-mono">Signature validée</div>
+                     <button
+                        onClick={() => {
+                          disconnect();
+                          setSigned(false);
+                          localStorage.removeItem('authToken');
+                        }}
+                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-sm font-mono"
+                     >
+                        Se déconnecter
+                     </button>
                    </div>
-                   <span className="font-bold text-sm text-white font-mono">{wallet.name}</span>
-                </button>
-             ))}
+                 )}
+               </div>
+             )}
           </div>
           
           <p className="mt-8 text-center text-xs text-slate-600 font-mono max-w-xs mx-auto">

@@ -1,10 +1,13 @@
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Views } from '@/types';
 import { TRADERS } from '@/lib/data';
 import { Button, Card, Badge, Metric } from '@/components/ui';
-import { ArrowLeft, ShieldCheck, Lock, ExternalLink, Share2, Zap, FileJson, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ExternalLink, Share2, Zap, FileJson, LayoutDashboard } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useCurrentAccount, useSignAndExecuteTransactionBlock, useSuiClient } from '@mysten/dapp-kit';
+import { TransactionBlock } from '@mysten/sui.js/transactions';
+import { SUI_PACKAGE_ID } from '@/lib/sui';
 
 const CHART_DATA = [
   { date: 'Sep', value: 1000 },
@@ -31,9 +34,69 @@ const MONTHLY_RETURNS = [
     { month: 'Dec', val: 7.8 },
 ];
 
-export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null }> = ({ onNavigate, traderId }) => {
-  
-  const trader = TRADERS.find(t => t.id === traderId) || TRADERS[0];
+export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null; traderAddr: string | null }> = ({ onNavigate, traderId, traderAddr }) => {
+  const account = useCurrentAccount();
+  const client = useSuiClient();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransactionBlock();
+  const [priceSui, setPriceSui] = useState('1');
+  const [expiryDays, setExpiryDays] = useState('30');
+  const [subscribing, setSubscribing] = useState(false);
+  const [subError, setSubError] = useState<string | null>(null);
+  const [subSuccess, setSubSuccess] = useState<string | null>(null);
+
+  const fallback = TRADERS.find(t => t.id === traderId) || TRADERS[0];
+  const trader = useMemo(() => {
+    if (traderAddr) {
+      return {
+        ...fallback,
+        handle: traderAddr,
+        subscriptionPrice: Number(priceSui),
+        avatar: `https://api.dicebear.com/7.x/shapes/svg?seed=${traderAddr}`,
+        isVerified: true,
+      };
+    }
+    return fallback;
+  }, [traderAddr, fallback, priceSui]);
+
+  async function subscribe() {
+    if (!account?.address || !traderAddr) {
+      setSubError('Wallet non connecté ou trader inconnu');
+      return;
+    }
+    setSubscribing(true);
+    setSubError(null);
+    setSubSuccess(null);
+    try {
+      const priceMist = BigInt(Math.floor(parseFloat(priceSui || '0') * 1_000_000_000));
+      const expiresMs = BigInt(Date.now() + Number(expiryDays || '30') * 24 * 3600 * 1000);
+      const coins = await client.getCoins({ owner: account.address, coinType: '0x2::sui::SUI', limit: 20 });
+      const coin = coins.data.find((c) => BigInt(c.balance) >= priceMist + 1_000_000); // marge gas
+      if (!coin) {
+        throw new Error('Pas de coin SUI suffisant pour payer');
+      }
+      const tx = new TransactionBlock();
+      tx.moveCall({
+        target: `${SUI_PACKAGE_ID}::subscription::mint_subscription_public`,
+        arguments: [
+          tx.pure.address(traderAddr),
+          tx.pure.address(account.address),
+          tx.pure.u64(expiresMs),
+          tx.pure.u64(priceMist),
+          tx.object('0x6'), // Clock
+          tx.object(coin.coinObjectId),
+        ],
+      });
+      const res = await signAndExecute({
+        transactionBlock: tx,
+        options: { showEffects: true },
+      });
+      setSubSuccess(`Tx: ${res.digest}`);
+    } catch (e: any) {
+      setSubError(e?.message ?? 'Erreur subscription');
+    } finally {
+      setSubscribing(false);
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -86,10 +149,39 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
                 <div className="bg-white/5 rounded-xl border border-white/5 p-4 mb-6">
                    <div className="flex justify-between items-center mb-4">
                       <span className="text-sm font-bold text-white">Monthly Access</span>
-                      <span className="text-lg font-mono text-cyan-400 font-bold">{trader.subscriptionPrice} SUI</span>
+                      <span className="text-lg font-mono text-cyan-400 font-bold">{priceSui || '1'} SUI</span>
                    </div>
-                   <Button fullWidth variant="primary" className="justify-between group mb-4" onClick={() => onNavigate(Views.SIGNALS)}>
-                      <span className="font-bold">SUBSCRIBE NOW</span>
+
+                   <div className="grid grid-cols-2 gap-3 mb-3">
+                     <div>
+                       <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Price (SUI)</label>
+                       <input
+                         value={priceSui}
+                         onChange={(e) => setPriceSui(e.target.value)}
+                         className="w-full bg-black border border-white/10 rounded px-3 py-2 text-sm text-white font-mono"
+                       />
+                     </div>
+                     <div>
+                       <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Expiry (days)</label>
+                       <input
+                         value={expiryDays}
+                         onChange={(e) => setExpiryDays(e.target.value)}
+                         className="w-full bg-black border border-white/10 rounded px-3 py-2 text-sm text-white font-mono"
+                       />
+                     </div>
+                   </div>
+
+                   {subError && <div className="text-red-400 text-xs font-mono mb-2">{subError}</div>}
+                   {subSuccess && <div className="text-emerald-400 text-xs font-mono mb-2">{subSuccess}</div>}
+
+                   <Button
+                     fullWidth
+                     variant="primary"
+                     className="justify-between group mb-4"
+                     onClick={subscribe}
+                     disabled={subscribing || !account}
+                   >
+                      <span className="font-bold">{subscribing ? 'Subscribing...' : 'SUBSCRIBE NOW'}</span>
                       <ArrowLeft className="w-4 h-4 rotate-180" />
                    </Button>
                    <div className="flex justify-center gap-6 border-t border-white/10 pt-3 opacity-60">

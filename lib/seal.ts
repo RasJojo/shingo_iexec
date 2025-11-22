@@ -3,8 +3,8 @@
  * Le chiffrement se fait côté client, le backend ne voit jamais le clair.
  */
 import { SealClient, SessionKey } from '@mysten/seal';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui.js/client';
-import { fromHEX } from '@mysten/sui.js/utils';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { fromHEX } from '@mysten/sui/utils';
 
 export interface SignalPayload {
   market: string;

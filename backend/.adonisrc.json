@@ -17,11 +17,11 @@
   "providers": [
     "./providers/AppProvider",
     "@adonisjs/core",
-    "@adonisjs/lucid/providers/LucidProvider"
+    "@adonisjs/lucid/build/providers/DatabaseProvider"
   ],
   "aceProviders": [
     "@adonisjs/repl",
-    "@adonisjs/lucid/providers/LucidProvider"
+    "@adonisjs/lucid/build/providers/DatabaseProvider"
   ],
   "tests": {
     "suites": [

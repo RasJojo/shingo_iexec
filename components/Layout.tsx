@@ -1,7 +1,8 @@
 import React, { ReactNode, useState } from 'react';
 import { Views } from '@/types';
-import { Menu, X, Wallet, Hexagon, Twitter, Github, Terminal } from 'lucide-react';
+import { Menu, X, Hexagon, Twitter, Github, Terminal } from 'lucide-react';
 import { Button } from './ui';
+import { ConnectButton, useCurrentAccount, useDisconnectWallet } from '@mysten/dapp-kit';
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,10 +13,9 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, isConnected }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleConnectClick = () => {
-    onNavigate(Views.CONNECT_WALLET);
-  };
+  const account = useCurrentAccount();
+  const connected = isConnected || Boolean(account?.address);
+  const { mutate: disconnect } = useDisconnectWallet();
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-slate-200 selection:bg-cyan-500/30">
@@ -71,26 +71,25 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
 
             {/* Right Actions */}
             <div className="hidden md:flex items-center gap-4">
-              {!isConnected ? (
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  icon={<Wallet className="w-4 h-4" />}
-                  onClick={handleConnectClick}
-                >
-                  Connect
-                </Button>
+              {!connected ? (
+                <ConnectButton />
               ) : (
                 <div className="flex items-center gap-3 pl-4 border-l border-white/10">
                   <div className="text-right hidden lg:block">
-                    <div className="text-[10px] text-slate-500 font-mono">BALANCE</div>
-                    <div className="text-xs font-bold text-white font-mono">2,405.20 SUI</div>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-violet-500 p-[1px]">
-                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-[10px] font-bold">
-                      OX
+                    <div className="text-[10px] text-slate-500 font-mono">WALLET</div>
+                    <div className="text-xs font-bold text-white font-mono">
+                      {account?.address ? `${account.address.slice(0, 6)}…${account.address.slice(-4)}` : ''}
                     </div>
                   </div>
+                  <button
+                    onClick={() => {
+                      disconnect();
+                      localStorage.removeItem('authToken');
+                    }}
+                    className="text-[10px] font-mono text-slate-400 hover:text-white border border-white/10 rounded px-2 py-1 transition-colors"
+                  >
+                    Disconnect
+                  </button>
                 </div>
               )}
             </div>
@@ -124,7 +123,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
                   {item.label}
                 </button>
               ))}
-              <Button variant="primary" onClick={handleConnectClick}>Connect Wallet</Button>
+              <ConnectButton />
         </div>
       )}
 

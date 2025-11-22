@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Views } from '@/types';
 import { Layout } from '@/components/Layout';
 import { LandingPage } from '@/components/views/LandingPage';
@@ -10,24 +10,36 @@ import { SubscriberDashboard } from '@/components/views/SubscriberDashboard';
 import { SignalsView } from '@/components/views/SignalsView';
 import { TraderDashboard } from '@/components/views/TraderDashboard';
 import { ConnectWallet } from '@/components/views/ConnectWallet';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<Views>(Views.LANDING);
   const [selectedTraderId, setSelectedTraderId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [selectedTraderAddr, setSelectedTraderAddr] = useState<string | null>(null);
+  const account = useCurrentAccount();
+  const isConnected = Boolean(account?.address);
 
-  const navigate = (view: Views, params?: { traderId?: string }) => {
+  const navigate = (view: Views, params?: { traderId?: string; traderAddr?: string }) => {
     if (params?.traderId) {
       setSelectedTraderId(params.traderId);
+    }
+    if (params?.traderAddr) {
+      setSelectedTraderAddr(params.traderAddr);
     }
     setCurrentView(view);
     window.scrollTo(0, 0);
   };
 
   const handleConnect = () => {
-    setIsConnected(true);
     navigate(Views.MARKETPLACE);
   };
+
+  useEffect(() => {
+    if (account?.address) {
+      navigate(Views.MARKETPLACE);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.address]);
 
   const renderView = () => {
     switch (currentView) {
@@ -36,7 +48,7 @@ export default function Home() {
       case Views.MARKETPLACE:
         return <Marketplace onNavigate={navigate} />;
       case Views.PROFILE:
-        return <TraderProfile onNavigate={navigate} traderId={selectedTraderId} />;
+        return <TraderProfile onNavigate={navigate} traderId={selectedTraderId} traderAddr={selectedTraderAddr} />;
       case Views.DASHBOARD_SUBSCRIBER:
         return <SubscriberDashboard onNavigate={navigate} />;
       case Views.SIGNALS:

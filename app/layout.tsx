@@ -2,6 +2,8 @@ import React from "react";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import "@mysten/dapp-kit/dist/index.css";
+import { Providers } from "./providers";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -33,7 +35,9 @@ export default function RootLayout({
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} bg-obsidian text-white font-sans`}>
         <div className="bg-noise"></div>
         <div className="scanline"></div>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
