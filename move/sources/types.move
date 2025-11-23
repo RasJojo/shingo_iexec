@@ -10,9 +10,18 @@ module notascam::types {
     }
 
     /// Cap détenu par un trader pour publier et gérer ses objets.
+    /// Contient un prix d'abonnement (en Mist) fixé par le trader.
     public struct TraderCap has key {
         id: object::UID,
         trader: address,
+        price_mist: u64,
+    }
+
+    /// Profil partagé utilisé pour la souscription sans possession du TraderCap.
+    public struct TraderProfile has key {
+        id: object::UID,
+        trader: address,
+        price_mist: u64,
     }
 
     /// Droit d'accès à un trader (peut représenter un abonnement).
@@ -35,6 +44,12 @@ module notascam::types {
     public struct TraderRegistered has copy, drop {
         trader: address,
         cap_id: object::ID,
+    }
+
+    /// Event pour les profils partagés (souscription publique).
+    public struct TraderProfileCreated has copy, drop {
+        trader: address,
+        profile_id: object::ID,
     }
 
     public struct SubscriptionMinted has copy, drop {
@@ -61,8 +76,12 @@ module notascam::types {
         AdminCap { id: object::new(ctx) }
     }
 
-    public fun new_trader_cap(trader: address, ctx: &mut TxContext): TraderCap {
-        TraderCap { id: object::new(ctx), trader }
+    public fun new_trader_cap(trader: address, price_mist: u64, ctx: &mut TxContext): TraderCap {
+        TraderCap { id: object::new(ctx), trader, price_mist }
+    }
+
+    public fun new_trader_profile(trader: address, price_mist: u64, ctx: &mut TxContext): TraderProfile {
+        TraderProfile { id: object::new(ctx), trader, price_mist }
     }
 
     public fun new_subscription_pass(trader: address, subscriber: address, expires_at: u64, ctx: &mut TxContext): SubscriptionPass {
@@ -75,6 +94,12 @@ module notascam::types {
 
     /* Getters */
     public fun trader_addr(cap: &TraderCap): address { cap.trader }
+    public fun trader_price(cap: &TraderCap): u64 { cap.price_mist }
+    public fun set_price(cap: &mut TraderCap, new_price: u64) {
+        cap.price_mist = new_price;
+    }
+    public fun profile_trader(p: &TraderProfile): address { p.trader }
+    public fun profile_price(p: &TraderProfile): u64 { p.price_mist }
     public fun pass_trader(pass: &SubscriptionPass): address { pass.trader }
     public fun pass_subscriber(pass: &SubscriptionPass): address { pass.subscriber }
     public fun pass_expires_at(pass: &SubscriptionPass): u64 { pass.expires_at }
@@ -86,6 +111,10 @@ module notascam::types {
     }
     public fun transfer_trader_cap(cap: TraderCap, to: address) {
         transfer::transfer(cap, to)
+    }
+    /// Les profils sont partagés (pas transférés).
+    public fun share_trader_profile(profile: TraderProfile) {
+        transfer::share_object(profile)
     }
     public fun transfer_pass(pass: SubscriptionPass, to: address) {
         transfer::transfer(pass, to)
@@ -103,6 +132,11 @@ module notascam::types {
     public fun emit_trader_registered(trader: address, cap: &TraderCap) {
         let cap_id = object::id(cap);
         event::emit(TraderRegistered { trader, cap_id });
+    }
+
+    public fun emit_trader_profile_created(trader: address, profile: &TraderProfile) {
+        let profile_id = object::id(profile);
+        event::emit(TraderProfileCreated { trader, profile_id });
     }
 
     public fun emit_subscription_minted(trader: address, subscriber: address, pass: &SubscriptionPass) {

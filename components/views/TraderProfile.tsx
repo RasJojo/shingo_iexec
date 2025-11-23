@@ -1,23 +1,13 @@
+"use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Views } from '@/types';
 import { TRADERS } from '@/lib/data';
 import { Button, Card, Badge, Metric } from '@/components/ui';
-import { ArrowLeft, ShieldCheck, ExternalLink, Share2, Zap, FileJson, LayoutDashboard } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { useCurrentAccount, useSignAndExecuteTransactionBlock, useSuiClient } from '@mysten/dapp-kit';
-import { TransactionBlock } from '@mysten/sui.js/transactions';
+import { ArrowLeft, ShieldCheck, ExternalLink, Share2, Zap, FileJson, LayoutDashboard, Lock } from 'lucide-react';
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
 import { SUI_PACKAGE_ID } from '@/lib/sui';
-
-const CHART_DATA = [
-  { date: 'Sep', value: 1000 },
-  { date: 'Oct', value: 1450 },
-  { date: 'Nov', value: 1320 },
-  { date: 'Dec', value: 1890 },
-  { date: 'Jan', value: 2450 },
-  { date: 'Feb', value: 2100 },
-  { date: 'Mar', value: 2800 },
-];
 
 const MONTHLY_RETURNS = [
     { month: 'Jan', val: 12.4 },
@@ -34,15 +24,16 @@ const MONTHLY_RETURNS = [
     { month: 'Dec', val: 7.8 },
 ];
 
-export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null; traderAddr: string | null }> = ({ onNavigate, traderId, traderAddr }) => {
+export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null; traderAddr: string | null; traderCapId?: string | null; traderProfileId?: string | null }> = ({ onNavigate, traderId, traderAddr, traderCapId, traderProfileId }) => {
   const account = useCurrentAccount();
   const client = useSuiClient();
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransactionBlock();
-  const [priceSui, setPriceSui] = useState('1');
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const [priceSui, setPriceSui] = useState('0.001');
   const [expiryDays, setExpiryDays] = useState('30');
   const [subscribing, setSubscribing] = useState(false);
   const [subError, setSubError] = useState<string | null>(null);
   const [subSuccess, setSubSuccess] = useState<string | null>(null);
+  const [loadingPrice, setLoadingPrice] = useState(false);
 
   const fallback = TRADERS.find(t => t.id === traderId) || TRADERS[0];
   const trader = useMemo(() => {
@@ -58,9 +49,30 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
     return fallback;
   }, [traderAddr, fallback, priceSui]);
 
+  // Charge le prix on-chain depuis le TraderProfile (shared)
+  useEffect(() => {
+    async function loadPrice() {
+      if (!traderProfileId) return;
+      setLoadingPrice(true);
+      try {
+        const obj = await client.getObject({ id: traderProfileId, options: { showContent: true } });
+        const fields: any = (obj as any).data?.content?.fields;
+        const priceMist = fields?.price_mist ? Number(fields.price_mist) : null;
+        if (priceMist != null) {
+          setPriceSui((priceMist / 1_000_000_000).toString());
+        }
+      } catch (e: any) {
+        setSubError(e?.message ?? 'Erreur lecture prix on-chain');
+      } finally {
+        setLoadingPrice(false);
+      }
+    }
+    loadPrice();
+  }, [client, traderProfileId]);
+
   async function subscribe() {
-    if (!account?.address || !traderAddr) {
-      setSubError('Wallet non connecté ou trader inconnu');
+    if (!account?.address || !traderProfileId) {
+      setSubError('Wallet non connecté ou TraderProfile inconnu');
       return;
     }
     setSubscribing(true);
@@ -70,24 +82,23 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
       const priceMist = BigInt(Math.floor(parseFloat(priceSui || '0') * 1_000_000_000));
       const expiresMs = BigInt(Date.now() + Number(expiryDays || '30') * 24 * 3600 * 1000);
       const coins = await client.getCoins({ owner: account.address, coinType: '0x2::sui::SUI', limit: 20 });
-      const coin = coins.data.find((c) => BigInt(c.balance) >= priceMist + 1_000_000); // marge gas
+      const coin = coins.data.find((c) => BigInt(c.balance) >= priceMist + BigInt(1_000_000)); // marge gas
       if (!coin) {
         throw new Error('Pas de coin SUI suffisant pour payer');
       }
-      const tx = new TransactionBlock();
+      const tx = new Transaction();
       tx.moveCall({
-        target: `${SUI_PACKAGE_ID}::subscription::mint_subscription_public`,
+        target: `${SUI_PACKAGE_ID}::subscription::mint_subscription_public_profile`,
         arguments: [
-          tx.pure.address(traderAddr),
+          tx.object(traderProfileId),
           tx.pure.address(account.address),
           tx.pure.u64(expiresMs),
-          tx.pure.u64(priceMist),
           tx.object('0x6'), // Clock
           tx.object(coin.coinObjectId),
         ],
       });
       const res = await signAndExecute({
-        transactionBlock: tx,
+        transaction: tx,
         options: { showEffects: true },
       });
       setSubSuccess(`Tx: ${res.digest}`);
@@ -137,14 +148,9 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
                    </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <Badge variant={trader.riskLevel === 'Aggressive' ? 'acid' : 'neutral'} size="sm">{trader.riskLevel}</Badge>
-                  {trader.strategyTags.map(tag => <Badge key={tag} variant="neutral" size="sm">{tag}</Badge>)}
+                <div className="text-slate-500 text-xs font-mono uppercase tracking-wider mb-6">
+                  Profil on-chain – données détaillées à venir
                 </div>
-
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 font-light">
-                  {trader.description}
-                </p>
 
                 <div className="bg-white/5 rounded-xl border border-white/5 p-4 mb-6">
                    <div className="flex justify-between items-center mb-4">
@@ -154,11 +160,11 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
 
                    <div className="grid grid-cols-2 gap-3 mb-3">
                      <div>
-                       <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Price (SUI)</label>
+                       <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Price (SUI, on-chain)</label>
                        <input
-                         value={priceSui}
-                         onChange={(e) => setPriceSui(e.target.value)}
-                         className="w-full bg-black border border-white/10 rounded px-3 py-2 text-sm text-white font-mono"
+                         value={loadingPrice ? '...' : priceSui}
+                         readOnly
+                         className="w-full bg-black border border-white/10 rounded px-3 py-2 text-sm text-white font-mono opacity-70"
                        />
                      </div>
                      <div>
@@ -204,149 +210,18 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
              </div>
           </Card>
 
-          {/* Advanced Stats */}
-          <div className="p-6 rounded-xl border border-white/5 bg-white/5 space-y-4">
-             <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-2">Advanced Metrics</h3>
-             <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <span className="text-sm text-slate-400">Profit Factor</span>
-                <span className="font-mono text-white font-bold">2.45</span>
-             </div>
-             <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <span className="text-sm text-slate-400">Avg. Hold Time</span>
-                <span className="font-mono text-white font-bold">4h 12m</span>
-             </div>
-             <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                <span className="text-sm text-slate-400">Sharpe Ratio</span>
-                <span className="font-mono text-white font-bold">1.8</span>
-             </div>
-             <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">Best Trade</span>
-                <span className="font-mono text-emerald-400 font-bold">+420%</span>
-             </div>
-          </div>
         </div>
 
-        {/* Right Col: Data & History */}
+        {/* Right Col: on-chain reminders */}
         <div className="lg:col-span-8 space-y-6">
-          
-          {/* Performance Chart */}
-          <Card className="p-8">
-             <div className="flex items-center justify-between mb-8">
-                <div>
-                   <h2 className="text-xl font-bold text-white font-display">EQUITY CURVE</h2>
-                   <p className="text-xs text-slate-500 font-mono uppercase tracking-wider">Verified on-chain history</p>
-                </div>
-                <div className="text-right">
-                   <div className={`text-3xl font-bold font-mono tracking-tight ${trader.pnl30d > 0 ? 'text-emerald-400 text-shadow-emerald' : 'text-red-400'}`}>
-                     {trader.pnl30d > 0 ? '+' : ''}{trader.pnl30d}%
-                   </div>
-                </div>
-             </div>
-
-             <div className="h-[300px] w-full -ml-2 mb-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={CHART_DATA}>
-                  <defs>
-                    <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={trader.pnl30d > 0 ? '#10b981' : '#ef4444'} stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor={trader.pnl30d > 0 ? '#10b981' : '#ef4444'} stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                  <XAxis dataKey="date" stroke="#444" tick={{fontSize: 10, fontFamily: 'monospace'}} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis stroke="#444" tick={{fontSize: 10, fontFamily: 'monospace'}} axisLine={false} tickLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#000', borderColor: '#333', color: '#fff', borderRadius: '8px' }}
-                    itemStyle={{ color: trader.pnl30d > 0 ? '#10b981' : '#ef4444', fontFamily: 'monospace' }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke={trader.pnl30d > 0 ? '#10b981' : '#ef4444'} strokeWidth={2} fillOpacity={1} fill="url(#colorVal)" />
-                </AreaChart>
-              </ResponsiveContainer>
-             </div>
-
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-8 border-t border-white/5">
-                <Metric label="Total PnL" value={`${trader.pnlTotal > 0 ? '+' : ''}${trader.pnlTotal}%`} trend={2.1} />
-                <Metric label="Winrate" value={`${trader.winRate}%`} />
-                <Metric label="Drawdown" value={`-${trader.drawdown}%`} />
-                <Metric label="Subscribers" value={trader.subscribers.toString()} />
-             </div>
+          <Card className="p-8 border border-white/10 bg-white/5">
+            <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest mb-3">Données réelles</h3>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Seules les informations on-chain sont affichées pour l’instant : adresse du trader, formulaire de souscription.
+              Les métriques de performance, l’historique des signaux et les stats agrégées seront affichés quand le backend
+              (indexation + DB) sera branché.
+            </p>
           </Card>
-
-          {/* Monthly Returns Heatmap */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <Card className="p-6">
-                <h3 className="text-sm font-bold text-white font-display mb-4">MONTHLY RETURNS</h3>
-                <div className="grid grid-cols-4 gap-2">
-                   {MONTHLY_RETURNS.map((m) => (
-                      <div key={m.month} className="bg-white/5 rounded p-2 text-center">
-                         <div className="text-[10px] text-slate-500 uppercase mb-1">{m.month}</div>
-                         <div className={`text-xs font-mono font-bold ${m.val > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {m.val > 0 ? '+' : ''}{m.val}%
-                         </div>
-                      </div>
-                   ))}
-                </div>
-             </Card>
-
-             <Card className="p-6">
-                <h3 className="text-sm font-bold text-white font-display mb-4">ASSET ALLOCATION</h3>
-                <div className="space-y-3">
-                    {trader.assets.map((asset, i) => (
-                       <div key={asset} className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center text-[10px] font-bold border border-white/10">
-                             {asset}
-                          </div>
-                          <div className="flex-1">
-                             <div className="flex justify-between text-xs mb-1">
-                                <span className="text-white font-bold">{asset}</span>
-                                <span className="text-slate-400">{50 - (i*10)}%</span>
-                             </div>
-                             <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                <div className="h-full bg-cyan-500" style={{ width: `${50 - (i*10)}%`}}></div>
-                             </div>
-                          </div>
-                       </div>
-                    ))}
-                </div>
-             </Card>
-          </div>
-
-          {/* Encrypted History Preview */}
-          <div className="pt-4">
-             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-white font-display">RECENT SIGNALS</h3>
-                <div className="text-xs font-mono text-slate-500 flex items-center gap-2">
-                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                   LIVE FEED
-                </div>
-             </div>
-
-             <div className="space-y-1 font-mono text-sm">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="group flex items-center justify-between p-4 border border-white/5 rounded bg-white/5 hover:bg-white/10 transition-colors">
-                     <div className="flex items-center gap-6">
-                        <span className="text-slate-600 text-xs">2h ago</span>
-                        <span className={`font-bold ${i%2===0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                           {i%2===0 ? 'SHORT' : 'LONG'}
-                        </span>
-                        <span className="text-white">{trader.assets[0] || 'SUI'}/USDC</span>
-                     </div>
-                     
-                     {i < 2 ? (
-                        <div className="text-emerald-400">
-                           TP HIT <span className="opacity-50">(+12%)</span>
-                        </div>
-                     ) : (
-                        <div className="flex items-center gap-2 text-slate-500 opacity-50">
-                           <Lock className="w-3 h-3" /> 
-                           <span>0x7a...9f2</span>
-                        </div>
-                     )}
-                  </div>
-                ))}
-             </div>
-          </div>
-
         </div>
       </div>
     </div>

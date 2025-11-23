@@ -16,15 +16,23 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<Views>(Views.LANDING);
   const [selectedTraderId, setSelectedTraderId] = useState<string | null>(null);
   const [selectedTraderAddr, setSelectedTraderAddr] = useState<string | null>(null);
+  const [selectedTraderCapId, setSelectedTraderCapId] = useState<string | null>(null);
+  const [selectedTraderProfileId, setSelectedTraderProfileId] = useState<string | null>(null);
   const account = useCurrentAccount();
   const isConnected = Boolean(account?.address);
 
-  const navigate = (view: Views, params?: { traderId?: string; traderAddr?: string }) => {
+  const navigate = (view: Views, params?: { traderId?: string; traderAddr?: string; traderCapId?: string; traderProfileId?: string }) => {
     if (params?.traderId) {
       setSelectedTraderId(params.traderId);
     }
     if (params?.traderAddr) {
       setSelectedTraderAddr(params.traderAddr);
+    }
+    if (params?.traderCapId) {
+      setSelectedTraderCapId(params.traderCapId);
+    }
+    if (params?.traderProfileId) {
+      setSelectedTraderProfileId(params.traderProfileId);
     }
     setCurrentView(view);
     window.scrollTo(0, 0);
@@ -48,7 +56,15 @@ export default function Home() {
       case Views.MARKETPLACE:
         return <Marketplace onNavigate={navigate} />;
       case Views.PROFILE:
-        return <TraderProfile onNavigate={navigate} traderId={selectedTraderId} traderAddr={selectedTraderAddr} />;
+        return (
+          <TraderProfile
+            onNavigate={navigate}
+            traderId={selectedTraderId}
+            traderAddr={selectedTraderAddr}
+            traderCapId={selectedTraderCapId}
+            traderProfileId={selectedTraderProfileId}
+          />
+        );
       case Views.DASHBOARD_SUBSCRIBER:
         return <SubscriberDashboard onNavigate={navigate} />;
       case Views.SIGNALS:
