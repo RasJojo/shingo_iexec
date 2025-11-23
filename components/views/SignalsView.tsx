@@ -109,6 +109,10 @@ export const SignalsView: React.FC<{ onNavigate: (view: Views) => void; isConnec
           if (!uri || uri.includes('test-signal')) {
             continue;
           }
+          // Filtre: on n'affiche que les signaux actifs dans le Terminal
+          if (Number(validUntil) <= Date.now()) {
+            continue;
+          }
           const blobId = uri.startsWith('walrus://') ? uri.replace('walrus://', '') : null;
           let decrypted: string | null = null;
           let decryptedJson: string | null = null;
