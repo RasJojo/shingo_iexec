@@ -94,67 +94,70 @@ export const SignalsView: React.FC<{ onNavigate: (view: Views) => void; isConnec
       setPassInfo(firstPass);
 
       const signalsAll: OnchainSignal[] = [];
-      for (const pa of parsedPasses) {
-        if (!pa.trader) continue;
-        const sigs = await client.getOwnedObjects({
-          owner: pa.trader,
-          filter: { StructType: signalType },
+      // Récupère les events SignalPublished (shared objects) puis filtre par trader/pass + valid_until
+      const events = await client.queryEvents({
+        query: { MoveEventType: `${SUI_PACKAGE_ID}::types::SignalPublished` },
+        limit: 50,
+      });
+      for (const ev of events.data || []) {
+        const fields = (ev as any).parsedJson || {};
+        const trader = fields.trader as string;
+        const validUntil = Number(fields.valid_until ?? 0);
+        const id = fields.signal_id as string;
+        if (!trader || !id) continue;
+        // Pass détenu pour ce trader ?
+        const hasPass = parsedPasses.some((p) => p.trader === trader);
+        if (!hasPass) continue;
+        // Affiche uniquement les actifs dans le terminal
+        if (validUntil <= Date.now()) continue;
+        // Récupère l'objet signal pour extraire l'URI Walrus
+        const obj = await client.getObject({
+          id,
           options: { showContent: true },
         });
-        for (const o of sigs.data || []) {
-          const id = o.data?.objectId ?? '';
-          const walrus = readField<number[]>(o, ['walrus_uri']) ?? [];
-          const validUntil = readField<string>(o, ['valid_until']) ?? '';
-          const uri = decodeWalrusUri(walrus);
-          if (!uri || uri.includes('test-signal')) {
-            continue;
-          }
-          // Filtre: on n'affiche que les signaux actifs dans le Terminal
-          if (Number(validUntil) <= Date.now()) {
-            continue;
-          }
-          const blobId = uri.startsWith('walrus://') ? uri.replace('walrus://', '') : null;
-          let decrypted: string | null = null;
-          let decryptedJson: string | null = null;
-          let decryptError: string | null = null;
-          try {
-            if (!blobId) {
-              decryptError = 'Signal non chiffré (URI en clair)';
-            } else if (!account?.address) {
-              decryptError = 'Wallet non connecté';
-            } else {
-              const buf = await fetchWalrusBlob(blobId);
-              // Signer une seule fois le personal message pour la session
-              if (!sessionSigned) {
-                const pm = sessionKey.getPersonalMessage();
-                const sig = await signAnyMessage({ message: pm });
-                await sessionKey.setPersonalMessageSignature((sig as any).signature);
-                sessionSigned = true;
-              }
-              // build txBytes pour ce signal précis
-              const txb = await buildSealApproveTx(id, pa.id, SUI_PACKAGE_ID, account.address);
-              const plain = await sealDecryptWithSession(new Uint8Array(buf), sessionKey, txb);
-              decrypted = new TextDecoder().decode(plain);
-              try {
-                const parsed = JSON.parse(decrypted);
-                decryptedJson = JSON.stringify(parsed, null, 2);
-              } catch {
-                decryptedJson = decrypted;
-              }
+        const walrus = readField<number[]>(obj, ['walrus_uri']) ?? [];
+        const uri = decodeWalrusUri(walrus);
+        if (!uri || uri.includes('test-signal')) continue;
+        const blobId = uri.startsWith('walrus://') ? uri.replace('walrus://', '') : null;
+        let decrypted: string | null = null;
+        let decryptedJson: string | null = null;
+        let decryptError: string | null = null;
+        try {
+          if (!blobId) {
+            decryptError = 'Signal non chiffré (URI en clair)';
+          } else if (!account?.address) {
+            decryptError = 'Wallet non connecté';
+          } else {
+            const buf = await fetchWalrusBlob(blobId);
+            if (!sessionSigned) {
+              const pm = sessionKey.getPersonalMessage();
+              const sig = await signAnyMessage({ message: pm });
+              await sessionKey.setPersonalMessageSignature((sig as any).signature);
+              sessionSigned = true;
             }
-          } catch (e) {
-            decryptError = (e as any)?.message ?? 'Déchiffrement impossible';
+            const passId = parsedPasses.find((p) => p.trader === trader)?.id || '';
+            const txb = await buildSealApproveTx(id, passId, SUI_PACKAGE_ID, account.address);
+            const plain = await sealDecryptWithSession(new Uint8Array(buf), sessionKey, txb);
+            decrypted = new TextDecoder().decode(plain);
+            try {
+              const parsed = JSON.parse(decrypted);
+              decryptedJson = JSON.stringify(parsed, null, 2);
+            } catch {
+              decryptedJson = decrypted;
+            }
           }
-          signalsAll.push({
-            id,
-            walrusUri: uri,
-            validUntil: validUntil?.toString() ?? '',
-            trader: pa.trader,
-            decrypted,
-            decryptedJson,
-            decryptError,
-          } as any);
+        } catch (e) {
+          decryptError = (e as any)?.message ?? 'Déchiffrement impossible';
         }
+        signalsAll.push({
+          id,
+          walrusUri: uri,
+          validUntil: validUntil.toString(),
+          trader,
+          decrypted,
+          decryptedJson,
+          decryptError,
+        } as any);
       }
       setSignals(signalsAll);
     } catch (e: any) {

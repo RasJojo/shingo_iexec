@@ -1,48 +1,48 @@
 /**
- * Seed 5 signals (passé/actif/futur) pour le trader de démo.
- * Utilise @mysten/seal, Walrus (testnet) et publie via publish_signal.
+ * Seed 5 signals (passé / actif / futur) via Seal + Walrus + sui client call.
  *
  * Prérequis :
- * - .env.local rempli (keys Seal/Walrus + package)
- * - Wallet testnet avec la TraderCap : 0xffcfcc4d1e303d5927419ba0fae35090e959e4314aa09fc2f34101d13dfc037d
- * - SUI testnet pour payer le gas
+ *  - .env.local rempli (package ID, seal policy, walrus endpoints)
+ *  - Wallet actif dans `sui client active-address` avec la TraderCap :
+ *        0xffcfcc4d1e303d5927419ba0fae35090e959e4314aa09fc2f34101d13dfc037d
+ *  - SUI testnet pour le gas.
  *
- * Usage (avec ts-node) :
+ * Usage :
  *   pnpm ts-node scripts/seed_signals.ts
+ *
+ * Le script :
+ *   - chiffre chaque payload avec Seal
+ *   - uploade sur Walrus
+ *   - appelle `sui client call` pour publish_signal (walrus_uri hex, valid_until, clock 0x6)
  */
 import 'dotenv/config';
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
-import { Transaction } from '@mysten/sui/transactions';
 import { fromHEX } from '@mysten/sui/utils';
 import { SealClient } from '@mysten/seal';
+import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import fetch from 'node-fetch';
+import { execSync } from 'child_process';
 
-// Env
 const PACKAGE_ID = process.env.NEXT_PUBLIC_SUI_PACKAGE_ID!;
-const SEAL_POLICY_ID_HEX = process.env.NEXT_PUBLIC_SEAL_POLICY_ID_HEX!;
+const POLICY_ID_HEX = process.env.NEXT_PUBLIC_SEAL_POLICY_ID_HEX!;
 const SEAL_KEY_SERVERS = JSON.parse(process.env.NEXT_PUBLIC_SEAL_KEY_SERVERS || '[]');
 const WALRUS_PUBLISHER = process.env.NEXT_PUBLIC_WALRUS_PUBLISHER!;
-const WALRUS_AGGREGATOR = process.env.NEXT_PUBLIC_WALRUS_AGGREGATOR!;
 
-// Objets
 const TRADER_CAP_ID = '0xffcfcc4d1e303d5927419ba0fae35090e959e4314aa09fc2f34101d13dfc037d';
 const CLOCK_ID = '0x6';
-
-// Signaux à publier (5 scénarios, dont un intraday SUI short 23/11/2025)
-type SeedPayload = {
-  label: string;
-  walrus_uri?: string;
-  valid_until_ms: number;
-  payload: any;
-};
 
 const now = Date.now();
 const oneDay = 24 * 3600 * 1000;
 
+type SeedPayload = {
+  label: string;
+  valid_until_ms: number;
+  payload: any;
+};
+
 const seeds: SeedPayload[] = [
   {
     label: 'SUI short intraday 23/11/2025',
-    valid_until_ms: now - oneDay, // expiré
+    valid_until_ms: now - oneDay,
     payload: {
       market: 'SUI/USDC',
       side: 'SELL',
@@ -65,7 +65,7 @@ const seeds: SeedPayload[] = [
   },
   {
     label: 'CETUS short intraday',
-    valid_until_ms: now - oneDay * 2, // expiré
+    valid_until_ms: now - oneDay * 2,
     payload: {
       market: 'CETUS/USDC',
       side: 'SELL',
@@ -88,7 +88,7 @@ const seeds: SeedPayload[] = [
   },
   {
     label: 'CETUS long swing',
-    valid_until_ms: now + oneDay * 3, // actif
+    valid_until_ms: now + oneDay * 3,
     payload: {
       market: 'CETUS/USDC',
       side: 'BUY',
@@ -108,7 +108,7 @@ const seeds: SeedPayload[] = [
   },
   {
     label: 'NAVX long intraday gagnant',
-    valid_until_ms: now - oneDay / 2, // expiré
+    valid_until_ms: now - oneDay / 2,
     payload: {
       market: 'NAVX/USDC',
       side: 'BUY',
@@ -131,7 +131,7 @@ const seeds: SeedPayload[] = [
   },
   {
     label: 'NAVX long swing perdant',
-    valid_until_ms: now + oneDay * 7, // actif/futur
+    valid_until_ms: now + oneDay * 7,
     payload: {
       market: 'NAVX/USDC',
       side: 'BUY',
@@ -164,8 +164,11 @@ async function uploadWalrus(data: Uint8Array): Promise<string> {
   return `walrus://${blobId}`;
 }
 
+function toHexVector(u: string): string {
+  return '0x' + Buffer.from(u, 'utf8').toString('hex');
+}
+
 async function main() {
-  console.log('Seeding signals…');
   const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
   const seal = new SealClient({
     suiClient,
@@ -174,34 +177,33 @@ async function main() {
   });
 
   for (const seed of seeds) {
+    console.log(`\n[seed] ${seed.label}`);
     try {
-      console.log(`- ${seed.label}`);
       const data = new TextEncoder().encode(JSON.stringify(seed.payload));
       const { encryptedObject } = await seal.encrypt({
         threshold: 2,
         packageId: PACKAGE_ID,
-        id: fromHEX(SEAL_POLICY_ID_HEX),
+        id: fromHEX(POLICY_ID_HEX),
         data,
       });
       const walrusUri = await uploadWalrus(encryptedObject);
+      const hexUri = toHexVector(walrusUri);
+      console.log(`  walrusUri=${walrusUri}`);
 
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${PACKAGE_ID}::signal_registry::publish_signal`,
-        arguments: [
-          tx.object(TRADER_CAP_ID),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(walrusUri))),
-          tx.pure.u64(BigInt(seed.valid_until_ms)),
-          tx.object(CLOCK_ID),
-        ],
-      });
-      tx.setSender(await suiClient.getAddress());
-      const res = await suiClient.signAndExecuteTransaction({
-        signer: await suiClient.getSignerInstance(),
-        transaction: tx,
-        options: { showEffects: true },
-      } as any);
-      console.log(`  → published ${walrusUri}, digest ${res.digest}`);
+      const cmd = [
+        'sui', 'client', 'call',
+        '--package', PACKAGE_ID,
+        '--module', 'signal_registry',
+        '--function', 'publish_signal',
+        '--args',
+        TRADER_CAP_ID,
+        hexUri,
+        seed.valid_until_ms.toString(),
+        CLOCK_ID,
+        '--gas-budget', '20000000'
+      ];
+      const out = execSync(cmd.join(' '), { encoding: 'utf8' });
+      console.log(out);
     } catch (e: any) {
       console.error(`  x ${seed.label}: ${e.message}`);
     }

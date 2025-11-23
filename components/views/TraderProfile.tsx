@@ -26,6 +26,15 @@ const MONTHLY_RETURNS = [
     { month: 'Dec', val: 7.8 },
 ];
 
+// Historique mock (données publiques, pour illustrer la perf passée)
+const MOCK_HISTORY = [
+  { date: '2025-10-31', market: 'SUI/USDC', side: 'SELL', entry: 1.3890, exit: 1.3415, pnl: 3.4 },
+  { date: '2025-11-06', market: 'CETUS/USDC', side: 'SELL', entry: 0.0378, exit: 0.0353, pnl: 6.6 },
+  { date: '2025-11-20', market: 'SUI/USDC', side: 'BUY', entry: 1.495, exit: 1.606, pnl: 7.4 },
+  { date: '2025-11-22', market: 'NAVX/USDC', side: 'BUY', entry: 0.01387, exit: 0.01680, pnl: 21.1 },
+  { date: '2025-11-22', market: 'NAVX/USDC', side: 'BUY', entry: 0.0207, exit: 0.01567, pnl: -24.4 },
+];
+
 export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null; traderAddr: string | null; traderCapId?: string | null; traderProfileId?: string | null }> = ({ onNavigate, traderId, traderAddr, traderCapId, traderProfileId }) => {
   const account = useCurrentAccount();
   const client = useSuiClient();
@@ -79,6 +88,57 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
     }
     loadPrice();
   }, [client, traderProfileId]);
+
+  // Stats calculées sur l'historique mock (publique)
+  const mockStats = useMemo(() => {
+    if (MOCK_HISTORY.length === 0) return { winrate: 0, avgPnl: 0, equity: [] as number[], best: 0, worst: 0 };
+    let wins = 0;
+    let equity = 1;
+    const curve: number[] = [];
+    let sum = 0;
+    let best = -Infinity;
+    let worst = Infinity;
+    MOCK_HISTORY.forEach((t) => {
+      if (t.pnl > 0) wins += 1;
+      sum += t.pnl;
+      best = Math.max(best, t.pnl);
+      worst = Math.min(worst, t.pnl);
+      equity *= 1 + t.pnl / 100;
+      curve.push(Number(equity.toFixed(3)));
+    });
+    return {
+      winrate: Math.round((wins / MOCK_HISTORY.length) * 100),
+      avgPnl: Number((sum / MOCK_HISTORY.length).toFixed(2)),
+      equity: curve,
+      best: Number(best.toFixed(2)),
+      worst: Number(worst.toFixed(2)),
+    };
+  }, []);
+
+  // Helper pour dessiner une courbe lissée (catmull-rom vers bezier)
+  function buildSmoothPath(vals: number[], width = 260, height = 120) {
+    if (vals.length === 0) return '';
+    const max = Math.max(...vals, 1);
+    const points = vals.map((v, i) => {
+      const x = (i / Math.max(vals.length - 1, 1)) * width;
+      const y = height - (v / max) * (height - 20);
+      return { x, y };
+    });
+    if (points.length < 2) return '';
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i === 0 ? i : i - 1];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] ?? p2;
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }
 
   async function subscribe() {
     if (!account?.address || !traderProfileId) {
@@ -135,84 +195,8 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
     }
   }
 
-  // Charge les signaux du trader si on possède un pass correspondant
-  useEffect(() => {
-    async function loadSignals() {
-      if (!account?.address || !traderAddr) return;
-      setSignalsLoading(true);
-      setSignalsError(null);
-      setSignalsMsg(null);
-      try {
-        // Pass détenu par l'utilisateur pour ce trader
-        const passes = await client.getOwnedObjects({
-          owner: account.address,
-          filter: { StructType: `${SUI_PACKAGE_ID}::types::SubscriptionPass` },
-          options: { showContent: true },
-        });
-        const pass = (passes.data || []).find((p) => readField<string>(p, ['trader']) === traderAddr);
-        if (!pass) {
-          setSignalsMsg("Aucun pass pour ce trader : les signaux ne peuvent pas être déchiffrés.");
-          setSignals([]);
-          setSignalsLoading(false);
-          return;
-        }
-        const passId = pass.data?.objectId ?? '';
-        // txBytes sera construit pour chaque signal
-
-        // Session unique + signature unique
-        const sessionKey = await createSealSessionKey(account.address);
-        const pm = sessionKey.getPersonalMessage();
-        let signed: any = null;
-        if (currentWallet && currentAccount && (currentWallet as any).features?.['sui:signPersonalMessage']) {
-          const feature = (currentWallet as any).features['sui:signPersonalMessage'];
-          signed = await feature.signPersonalMessage({ account: currentAccount, message: pm, chain: 'sui:testnet' });
-        } else {
-          signed = await signPersonalMessage.mutateAsync({ message: pm, chain: 'sui:testnet' });
-        }
-        await sessionKey.setPersonalMessageSignature((signed as any).signature);
-
-        // Récupère les signaux détenus par ce trader
-        const sigs = await client.getOwnedObjects({
-          owner: traderAddr,
-          filter: { StructType: `${SUI_PACKAGE_ID}::types::SignalRef` },
-          options: { showContent: true },
-        });
-
-        const rows: any[] = [];
-        for (const o of sigs.data || []) {
-          const id = o.data?.objectId ?? '';
-          const walrusBytes = readField<number[]>(o, ['walrus_uri']) ?? [];
-          const validUntil = (readField<string>(o, ['valid_until']) ?? '').toString();
-          const uri = decodeWalrusUri(walrusBytes);
-          if (!uri || !uri.startsWith('walrus://')) continue;
-          const blobId = uri.replace('walrus://', '');
-          let decryptedJson: string | undefined;
-          let error: string | undefined;
-          try {
-            const buf = await fetchWalrusBlob(blobId);
-            const txBytes = await buildSealApproveTx(id, passId, SUI_PACKAGE_ID, account.address);
-            const plain = await sealDecryptWithSession(new Uint8Array(buf), sessionKey, txBytes);
-            const text = new TextDecoder().decode(plain);
-            try {
-              decryptedJson = JSON.stringify(JSON.parse(text), null, 2);
-            } catch {
-              decryptedJson = text;
-            }
-          } catch (e: any) {
-            error = e?.message ?? 'Déchiffrement impossible';
-          }
-          rows.push({ id, walrusUri: uri, validUntil, decryptedJson, error });
-        }
-        setSignals(rows);
-      } catch (e: any) {
-        setSignalsError(e?.message ?? 'Erreur chargement des signaux');
-      } finally {
-        setSignalsLoading(false);
-      }
-    }
-    loadSignals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.address, traderAddr]);
+  // Chargement des signaux désactivé pour éviter les pop-ups de signature dès l'ouverture du profil.
+  // On réactivera sur action explicite (bouton) si besoin.
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -320,6 +304,48 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
         {/* Right Col: on-chain reminders */}
         <div className="lg:col-span-8 space-y-6">
           <Card className="p-8 border border-white/10 bg-white/5">
+            <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest mb-4">Performance mock (courbe)</h3>
+            <div className="space-y-3">
+              <div className="flex gap-4 text-xs font-mono text-slate-400">
+                <span>Winrate: <span className="text-emerald-400">{mockStats.winrate}%</span></span>
+                <span>Avg PnL: <span className={mockStats.avgPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{mockStats.avgPnl}%</span></span>
+                <span>Equity finale: <span className="text-cyan-400">{mockStats.equity.slice(-1)[0] ?? 1}x</span></span>
+              </div>
+              {/* Courbe lissée + zone, inspirée du rendu mock initial */}
+              <div className="relative w-full h-32">
+                <svg viewBox="0 0 260 120" className="absolute inset-0">
+                  <defs>
+                    <linearGradient id="gradEquity" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="260" height="120" fill="url(#gradEquity)" opacity="0.05" />
+                  <path
+                    d={`${buildSmoothPath(mockStats.equity, 260, 120)} L 260 120 L 0 120 Z`}
+                    fill="url(#gradEquity)"
+                    opacity="0.4"
+                  />
+                  <path
+                    d={buildSmoothPath(mockStats.equity, 260, 120)}
+                    fill="none"
+                    stroke="#22d3ee"
+                    strokeWidth="2"
+                  />
+                  {mockStats.equity.map((v, i) => {
+                    const x = (i / Math.max(mockStats.equity.length - 1, 1)) * 260;
+                    const max = Math.max(...mockStats.equity, 1);
+                    const y = 120 - (v / max) * 100;
+                    return (
+                      <circle key={i} cx={x} cy={y} r={2.5} fill="#22d3ee" opacity="0.8" />
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-8 border border-white/10 bg-white/5">
             <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest mb-3">Données réelles</h3>
             <p className="text-slate-300 text-sm leading-relaxed">
               Seules les informations on-chain sont affichées pour l’instant : adresse du trader, formulaire de souscription.
@@ -330,38 +356,56 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
 
           <Card className="p-8 border border-white/10 bg-white/5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest">Signaux (accès pass)</h3>
-              {signalsLoading && <span className="text-xs text-slate-500 font-mono">Chargement…</span>}
+              <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest">Historique public (mock)</h3>
+              <div className="flex gap-3 text-xs font-mono text-slate-400">
+                <span>Winrate: <span className="text-emerald-400">{mockStats.winrate}%</span></span>
+                <span>Avg PnL: <span className={mockStats.avgPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{mockStats.avgPnl}%</span></span>
+                <span>Equity: <span className="text-cyan-400">{mockStats.equity.slice(-1)[0] ?? 1}x</span></span>
+              </div>
             </div>
-            {signalsError && <div className="text-red-400 text-xs font-mono mb-3">{signalsError}</div>}
-            {signalsMsg && <div className="text-amber-300 text-xs font-mono mb-3">{signalsMsg}</div>}
-            {signals.length === 0 && !signalsLoading && !signalsMsg && (
-              <div className="text-slate-500 text-sm font-mono">Aucun signal détecté pour ce trader.</div>
-            )}
-            <div className="space-y-4">
-              {signals.map((s) => {
-                const isExpired = Number(s.validUntil) < Date.now();
-                return (
-                  <div key={s.id} className="border border-white/10 rounded-lg p-3 bg-black/40 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>Signal {s.id.slice(0, 10)}…</span>
-                      <span className={isExpired ? 'text-amber-300' : 'text-emerald-300'}>
-                        {isExpired ? 'PASSÉ' : 'ACTIF'}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-mono break-all">URI: {s.walrusUri}</div>
-                    {s.decryptedJson ? (
-                      <pre className="text-[11px] bg-black/60 border border-emerald-500/20 rounded p-2 text-emerald-200 overflow-auto">
-                        {s.decryptedJson}
-                      </pre>
-                    ) : (
-                      <div className="text-[11px] text-red-400 font-mono">
-                        {s.error ? `Déchiffrement échoué: ${s.error}` : 'Déchiffrement en attente…'}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                <div className="text-[10px] text-slate-500 uppercase font-bold">Trades</div>
+                <div className="text-xl font-mono text-white">{MOCK_HISTORY.length}</div>
+              </div>
+              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                <div className="text-[10px] text-slate-500 uppercase font-bold">Winrate</div>
+                <div className="text-xl font-mono text-emerald-400">{mockStats.winrate}%</div>
+              </div>
+              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                <div className="text-[10px] text-slate-500 uppercase font-bold">Best trade</div>
+                <div className="text-xl font-mono text-emerald-400">{mockStats.best}%</div>
+              </div>
+              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                <div className="text-[10px] text-slate-500 uppercase font-bold">Worst trade</div>
+                <div className="text-xl font-mono text-red-400">{mockStats.worst}%</div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-xs font-mono text-slate-300">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-500 uppercase">
+                    <th className="py-2 pr-3">Date</th>
+                    <th className="py-2 pr-3">Pair</th>
+                    <th className="py-2 pr-3">Side</th>
+                    <th className="py-2 pr-3">Entry</th>
+                    <th className="py-2 pr-3">Exit</th>
+                    <th className="py-2 pr-3">PnL %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MOCK_HISTORY.map((t) => (
+                    <tr key={`${t.date}-${t.market}-${t.entry}`} className="border-b border-white/5">
+                      <td className="py-2 pr-3">{t.date}</td>
+                      <td className="py-2 pr-3">{t.market}</td>
+                      <td className="py-2 pr-3">{t.side}</td>
+                      <td className="py-2 pr-3">{t.entry}</td>
+                      <td className="py-2 pr-3">{t.exit}</td>
+                      <td className={`py-2 pr-3 ${t.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{t.pnl}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </Card>
         </div>

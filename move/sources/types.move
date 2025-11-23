@@ -119,8 +119,9 @@ module notascam::types {
     public fun transfer_pass(pass: SubscriptionPass, to: address) {
         transfer::transfer(pass, to)
     }
-    public fun transfer_signal(signal: SignalRef, to: address) {
-        transfer::transfer(signal, to)
+    public fun transfer_signal(signal: SignalRef, _to: address) {
+        // Partage en objet partagé pour permettre l'accès (seal_approve) sans ownership direct
+        transfer::share_object(signal)
     }
 
     public fun delete_pass(pass: SubscriptionPass) {
