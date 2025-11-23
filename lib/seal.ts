@@ -152,11 +152,16 @@ export async function sealDecryptWithSession(
 /**
  * Construit les tx bytes pour seal_approve_subscription (policy id + pass).
  */
-export async function buildSealApproveTx(passId: string, packageId: string, sender: string): Promise<Uint8Array> {
+export async function buildSealApproveTx(signalId: string, passId: string, packageId: string, sender: string): Promise<Uint8Array> {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::seal_policy::seal_approve_subscription`,
-    arguments: [tx.pure.vector('u8', getPolicyBytes()), tx.object(passId)],
+    arguments: [
+      tx.pure.vector('u8', getPolicyBytes()),
+      tx.object(signalId),
+      tx.object(passId),
+      tx.object('0x6'), // Clock
+    ],
   });
   tx.setSender(sender);
   return await tx.build({

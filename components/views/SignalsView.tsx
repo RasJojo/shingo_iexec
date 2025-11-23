@@ -75,10 +75,9 @@ export const SignalsView: React.FC<{ onNavigate: (view: Views) => void; isConnec
     setLoading(true);
     setError(null);
     try {
-      // Prépare session unique et txBytes par pass pour éviter de multiples signatures
+      // Prépare session unique pour éviter de multiples signatures
       let sessionKey = await createSealSessionKey(account.address);
       let sessionSigned = false;
-      const passTxBytes: Record<string, Uint8Array | undefined> = {};
 
       const passes = await client.getOwnedObjects({
         owner: account.address,
@@ -97,17 +96,6 @@ export const SignalsView: React.FC<{ onNavigate: (view: Views) => void; isConnec
       const signalsAll: OnchainSignal[] = [];
       for (const pa of parsedPasses) {
         if (!pa.trader) continue;
-        // Prépare txBytes pour seal_approve_subscription avec le pass courant
-        let txBytes: Uint8Array | null = null;
-        let txBuildError: string | null = null;
-        try {
-          if (account?.address) {
-            txBytes = await buildSealApproveTx(pa.id, SUI_PACKAGE_ID, account.address);
-            passTxBytes[pa.id] = txBytes;
-          }
-        } catch (e) {
-          txBuildError = (e as any)?.message ?? 'Impossible de construire la tx d’approbation';
-        }
         const sigs = await client.getOwnedObjects({
           owner: pa.trader,
           filter: { StructType: signalType },
@@ -130,8 +118,6 @@ export const SignalsView: React.FC<{ onNavigate: (view: Views) => void; isConnec
               decryptError = 'Signal non chiffré (URI en clair)';
             } else if (!account?.address) {
               decryptError = 'Wallet non connecté';
-            } else if (!txBytes) {
-              decryptError = txBuildError ?? 'Tx d’approbation Seal indisponible';
             } else {
               const buf = await fetchWalrusBlob(blobId);
               // Signer une seule fois le personal message pour la session
@@ -141,7 +127,9 @@ export const SignalsView: React.FC<{ onNavigate: (view: Views) => void; isConnec
                 await sessionKey.setPersonalMessageSignature((sig as any).signature);
                 sessionSigned = true;
               }
-              const plain = await sealDecryptWithSession(new Uint8Array(buf), sessionKey, txBytes);
+              // build txBytes pour ce signal précis
+              const txb = await buildSealApproveTx(id, pa.id, SUI_PACKAGE_ID, account.address);
+              const plain = await sealDecryptWithSession(new Uint8Array(buf), sessionKey, txb);
               decrypted = new TextDecoder().decode(plain);
               try {
                 const parsed = JSON.parse(decrypted);

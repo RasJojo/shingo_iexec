@@ -5,9 +5,11 @@ import { Views } from '@/types';
 import { TRADERS } from '@/lib/data';
 import { Button, Card, Badge, Metric } from '@/components/ui';
 import { ArrowLeft, ShieldCheck, ExternalLink, Share2, Zap, FileJson, LayoutDashboard, Lock } from 'lucide-react';
-import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
+import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction, useSignPersonalMessage, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { SUI_PACKAGE_ID } from '@/lib/sui';
+import { fetchWalrusBlob } from '@/lib/walrus';
+import { buildSealApproveTx, createSealSessionKey, sealDecryptWithSession } from '@/lib/seal';
 
 const MONTHLY_RETURNS = [
     { month: 'Jan', val: 12.4 },
@@ -27,6 +29,8 @@ const MONTHLY_RETURNS = [
 export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null; traderAddr: string | null; traderCapId?: string | null; traderProfileId?: string | null }> = ({ onNavigate, traderId, traderAddr, traderCapId, traderProfileId }) => {
   const account = useCurrentAccount();
   const client = useSuiClient();
+  const { currentWallet, currentAccount } = useCurrentWallet();
+  const signPersonalMessage = useSignPersonalMessage();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const [priceSui, setPriceSui] = useState('0.001');
   const [expiryDays, setExpiryDays] = useState('30');
@@ -34,6 +38,12 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
   const [subError, setSubError] = useState<string | null>(null);
   const [subSuccess, setSubSuccess] = useState<string | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const [signals, setSignals] = useState<
+    { id: string; walrusUri: string; validUntil: string; decryptedJson?: string; error?: string }[]
+  >([]);
+  const [signalsMsg, setSignalsMsg] = useState<string | null>(null);
+  const [signalsError, setSignalsError] = useState<string | null>(null);
+  const [signalsLoading, setSignalsLoading] = useState(false);
 
   const fallback = TRADERS.find(t => t.id === traderId) || TRADERS[0];
   const trader = useMemo(() => {
@@ -108,6 +118,101 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
       setSubscribing(false);
     }
   }
+
+  // Helpers pour lire les objets Sui
+  function readField<T>(obj: any, path: string[]): T | undefined {
+    const content: any = obj.data?.content;
+    if (!content || content.dataType !== 'moveObject') return undefined;
+    let cursor: any = content.fields;
+    for (const p of path) cursor = cursor?.[p];
+    return cursor as T | undefined;
+  }
+  function decodeWalrusUri(bytes: number[]): string {
+    try {
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    } catch {
+      return '';
+    }
+  }
+
+  // Charge les signaux du trader si on possède un pass correspondant
+  useEffect(() => {
+    async function loadSignals() {
+      if (!account?.address || !traderAddr) return;
+      setSignalsLoading(true);
+      setSignalsError(null);
+      setSignalsMsg(null);
+      try {
+        // Pass détenu par l'utilisateur pour ce trader
+        const passes = await client.getOwnedObjects({
+          owner: account.address,
+          filter: { StructType: `${SUI_PACKAGE_ID}::types::SubscriptionPass` },
+          options: { showContent: true },
+        });
+        const pass = (passes.data || []).find((p) => readField<string>(p, ['trader']) === traderAddr);
+        if (!pass) {
+          setSignalsMsg("Aucun pass pour ce trader : les signaux ne peuvent pas être déchiffrés.");
+          setSignals([]);
+          setSignalsLoading(false);
+          return;
+        }
+        const passId = pass.data?.objectId ?? '';
+        // txBytes sera construit pour chaque signal
+
+        // Session unique + signature unique
+        const sessionKey = await createSealSessionKey(account.address);
+        const pm = sessionKey.getPersonalMessage();
+        let signed: any = null;
+        if (currentWallet && currentAccount && (currentWallet as any).features?.['sui:signPersonalMessage']) {
+          const feature = (currentWallet as any).features['sui:signPersonalMessage'];
+          signed = await feature.signPersonalMessage({ account: currentAccount, message: pm, chain: 'sui:testnet' });
+        } else {
+          signed = await signPersonalMessage.mutateAsync({ message: pm, chain: 'sui:testnet' });
+        }
+        await sessionKey.setPersonalMessageSignature((signed as any).signature);
+
+        // Récupère les signaux détenus par ce trader
+        const sigs = await client.getOwnedObjects({
+          owner: traderAddr,
+          filter: { StructType: `${SUI_PACKAGE_ID}::types::SignalRef` },
+          options: { showContent: true },
+        });
+
+        const rows: any[] = [];
+        for (const o of sigs.data || []) {
+          const id = o.data?.objectId ?? '';
+          const walrusBytes = readField<number[]>(o, ['walrus_uri']) ?? [];
+          const validUntil = (readField<string>(o, ['valid_until']) ?? '').toString();
+          const uri = decodeWalrusUri(walrusBytes);
+          if (!uri || !uri.startsWith('walrus://')) continue;
+          const blobId = uri.replace('walrus://', '');
+          let decryptedJson: string | undefined;
+          let error: string | undefined;
+          try {
+            const buf = await fetchWalrusBlob(blobId);
+            const txBytes = await buildSealApproveTx(id, passId, SUI_PACKAGE_ID, account.address);
+            const plain = await sealDecryptWithSession(new Uint8Array(buf), sessionKey, txBytes);
+            const text = new TextDecoder().decode(plain);
+            try {
+              decryptedJson = JSON.stringify(JSON.parse(text), null, 2);
+            } catch {
+              decryptedJson = text;
+            }
+          } catch (e: any) {
+            error = e?.message ?? 'Déchiffrement impossible';
+          }
+          rows.push({ id, walrusUri: uri, validUntil, decryptedJson, error });
+        }
+        setSignals(rows);
+      } catch (e: any) {
+        setSignalsError(e?.message ?? 'Erreur chargement des signaux');
+      } finally {
+        setSignalsLoading(false);
+      }
+    }
+    loadSignals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.address, traderAddr]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -221,6 +326,43 @@ export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; trader
               Les métriques de performance, l’historique des signaux et les stats agrégées seront affichés quand le backend
               (indexation + DB) sera branché.
             </p>
+          </Card>
+
+          <Card className="p-8 border border-white/10 bg-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest">Signaux (accès pass)</h3>
+              {signalsLoading && <span className="text-xs text-slate-500 font-mono">Chargement…</span>}
+            </div>
+            {signalsError && <div className="text-red-400 text-xs font-mono mb-3">{signalsError}</div>}
+            {signalsMsg && <div className="text-amber-300 text-xs font-mono mb-3">{signalsMsg}</div>}
+            {signals.length === 0 && !signalsLoading && !signalsMsg && (
+              <div className="text-slate-500 text-sm font-mono">Aucun signal détecté pour ce trader.</div>
+            )}
+            <div className="space-y-4">
+              {signals.map((s) => {
+                const isExpired = Number(s.validUntil) < Date.now();
+                return (
+                  <div key={s.id} className="border border-white/10 rounded-lg p-3 bg-black/40 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>Signal {s.id.slice(0, 10)}…</span>
+                      <span className={isExpired ? 'text-amber-300' : 'text-emerald-300'}>
+                        {isExpired ? 'PASSÉ' : 'ACTIF'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono break-all">URI: {s.walrusUri}</div>
+                    {s.decryptedJson ? (
+                      <pre className="text-[11px] bg-black/60 border border-emerald-500/20 rounded p-2 text-emerald-200 overflow-auto">
+                        {s.decryptedJson}
+                      </pre>
+                    ) : (
+                      <div className="text-[11px] text-red-400 font-mono">
+                        {s.error ? `Déchiffrement échoué: ${s.error}` : 'Déchiffrement en attente…'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </Card>
         </div>
       </div>
