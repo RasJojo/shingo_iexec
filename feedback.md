@@ -1,28 +1,19 @@
 # Hack4Privacy Feedback (Shingo Team)
 
-## What worked well
+Overall, the iExec experience was very good for this project.
 
-- The iExec documentation around DataProtector and orderbook concepts was useful once the full flow was understood.
-- The hackathon format pushed us to ship a real end-to-end prototype (smart contract + frontend + backend + TEE).
-- Arbitrum + iExec is a strong combination for UX/business logic + privacy compute.
+## What we appreciated most
 
-## Pain points we hit
+- The documentation was clear, well-structured, and detailed enough to build a full end-to-end prototype.
+- It was easy to understand the main concepts and move from setup to implementation.
+- The provided tooling enabled us to ship a working on-chain + TEE flow in hackathon conditions.
 
-- Testnet funding/friction for RLC and execution resources caused repeated blocking during debugging.
-- It is not immediately obvious to newcomers which parts are on-chain vs off-chain in TEE flows.
-- Public RPC limits (rate limits / CORS issues) slowed iteration in local frontend development.
-- TEE failure modes (timeout/orderbook mismatch) are hard to diagnose without deep logs.
+## Main regret
 
-## Suggestions for future editions
+- The only real limitation for us was the RLC faucet cap on testnet (`5 RLC/day`).
+- We were running many end-to-end tests, so this quota was quickly exhausted and slowed iteration.
 
-- Provide a clearly documented “golden path” starter for Arbitrum Sepolia + iExec with known working app/orderbook.
-- Add a dedicated faucet or sponsored credits for hackathon participants for smoother E2E testing.
-- Publish a troubleshooting matrix for common TEE errors (funds, orderbook, app mismatch, timeout).
-- Provide a minimal reference architecture diagram explicitly separating:
-  - on-chain authorization/state
-  - off-chain TEE execution/orchestration
-  - who pays at each step.
+## Final note
 
-## Overall
-
-Great challenge and very relevant privacy stack. With a bit more onboarding and testnet DX support, teams can spend more time innovating and less time unblocking infra.
+Great overall developer experience and strong docs.  
+If faucet capacity were higher during hackathons, iteration speed would improve a lot.
