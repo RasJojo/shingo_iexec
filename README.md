@@ -109,7 +109,6 @@ npm run e2e:onchain-tee
 ## Submission Notes for Judges
 
 - `feedback.md` contains builder feedback requested by hackathon organizers.
-- `VIDEO_SCRIPT.md` provides a ready 4-minute demo script with speaking points.
 - Public history in trader profile now reads real on-chain closed-season signals and supports decrypt display inline.
 
 ## Known Constraints
