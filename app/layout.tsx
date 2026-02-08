@@ -1,28 +1,33 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import "@mysten/dapp-kit/dist/index.css";
 import { Providers } from "./providers";
 
-const inter = Inter({ 
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: '--font-inter',
+  variable: "--font-manrope",
 });
 
-const spaceGrotesk = Space_Grotesk({ 
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: '--font-space-grotesk',
+  variable: "--font-space-grotesk",
 });
 
-const jetbrainsMono = JetBrains_Mono({ 
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: '--font-jetbrains-mono',
+  variable: "--font-jetbrains-mono",
 });
 
 export const metadata: Metadata = {
-  title: "Notascam | The Sui Signal Protocol",
-  description: "A premium, non-custodial platform for on-chain encrypted trading signals.",
+  title: "Shingo | Arbitrum Signal Protocol",
+  description: "Marketplace de signaux chiffrés avec contrôle d'accès on-chain sur Arbitrum.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -31,13 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} bg-obsidian text-white font-sans`}>
-        <div className="bg-noise"></div>
-        <div className="scanline"></div>
-        <Providers>
-          {children}
-        </Providers>
+    <html lang="fr" className="dark">
+      <body
+        className={`${manrope.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
+      >
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

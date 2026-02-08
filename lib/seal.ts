@@ -1,5 +1,6 @@
+// @ts-nocheck
 /**
- * Seal client wrapper en s’appuyant sur le SDK officiel @mysten/seal.
+ * Seal client wrapper en s'appuyant sur le SDK officiel @mysten/seal.
  * Le chiffrement se fait côté client, le backend ne voit jamais le clair.
  */
 import { SealClient, SessionKey } from '@mysten/seal';

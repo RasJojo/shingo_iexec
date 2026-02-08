@@ -1,0 +1,27 @@
+{
+  "name": "shingo-evm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "clean": "hardhat clean",
+    "e2e:devnet-tee": "hardhat run scripts/e2e-devnet-tee.ts",
+    "e2e:onchain-tee": "hardhat run scripts/e2e-onchain-tee.ts --network arbitrumSepolia",
+    "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia",
+    "deploy:arbitrum": "hardhat run scripts/deploy.ts --network arbitrum"
+  },
+  "dependencies": {
+    "@arbitrum/sdk": "^2.0.0",
+    "@iexec/dataprotector": "^2.0.0-beta.23",
+    "@openzeppelin/contracts": "^5.2.0",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "hardhat": "^2.22.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}

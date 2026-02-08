@@ -20,7 +20,11 @@ import Server from '@ioc:Adonis/Core/Server'
 | are defined for every HTTP requests.
 |
 */
-Server.middleware.register([() => import('@ioc:Adonis/Core/BodyParser'), () => import('@ioc:Adonis/Core/Cors')])
+Server.middleware.register([
+  () => import('@ioc:Adonis/Core/BodyParser'),
+  // CORS is configured via backend/config/cors.ts. The IoC binding
+  // @ioc:Adonis/Core/Cors exposes config typing, not a middleware constructor.
+])
 
 /*
 |--------------------------------------------------------------------------

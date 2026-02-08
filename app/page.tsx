@@ -10,29 +10,21 @@ import { SubscriberDashboard } from '@/components/views/SubscriberDashboard';
 import { SignalsView } from '@/components/views/SignalsView';
 import { TraderDashboard } from '@/components/views/TraderDashboard';
 import { ConnectWallet } from '@/components/views/ConnectWallet';
-import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useEvmWallet } from '@/lib/evm/wallet';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<Views>(Views.LANDING);
   const [selectedTraderId, setSelectedTraderId] = useState<string | null>(null);
   const [selectedTraderAddr, setSelectedTraderAddr] = useState<string | null>(null);
-  const [selectedTraderCapId, setSelectedTraderCapId] = useState<string | null>(null);
-  const [selectedTraderProfileId, setSelectedTraderProfileId] = useState<string | null>(null);
-  const account = useCurrentAccount();
-  const isConnected = Boolean(account?.address);
+  const { address } = useEvmWallet();
+  const isConnected = Boolean(address);
 
-  const navigate = (view: Views, params?: { traderId?: string; traderAddr?: string; traderCapId?: string; traderProfileId?: string }) => {
+  const navigate = (view: Views, params?: { traderId?: string; traderAddr?: string }) => {
     if (params?.traderId) {
       setSelectedTraderId(params.traderId);
     }
     if (params?.traderAddr) {
       setSelectedTraderAddr(params.traderAddr);
-    }
-    if (params?.traderCapId) {
-      setSelectedTraderCapId(params.traderCapId);
-    }
-    if (params?.traderProfileId) {
-      setSelectedTraderProfileId(params.traderProfileId);
     }
     setCurrentView(view);
     window.scrollTo(0, 0);
@@ -43,11 +35,11 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (account?.address) {
+    if (address) {
       navigate(Views.MARKETPLACE);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.address]);
+  }, [address]);
 
   const renderView = () => {
     switch (currentView) {
@@ -61,8 +53,6 @@ export default function Home() {
             onNavigate={navigate}
             traderId={selectedTraderId}
             traderAddr={selectedTraderAddr}
-            traderCapId={selectedTraderCapId}
-            traderProfileId={selectedTraderProfileId}
           />
         );
       case Views.DASHBOARD_SUBSCRIBER:

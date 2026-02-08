@@ -29,6 +29,13 @@ Route.post('/traders', 'TradersController.store')
 
 Route.get('/signals', 'SignalsController.index')
 Route.post('/signals', 'SignalsController.store')
+Route.post('/tee/protect', 'TeeController.protect')
+Route.post('/tee/grant-subscriber', 'TeeController.grantSubscriber')
+Route.post('/tee/grant-season-subscribers', 'TeeController.grantSeasonSubscribers')
+Route.post('/tee/publicize-season', 'TeeController.publicizeSeason')
+Route.post('/tee/decrypt', 'TeeController.decrypt')
+Route.get('/tee/sync/status', 'TeeController.syncStatus')
+Route.post('/tee/sync/catchup', 'TeeController.syncCatchup')
 
 Route.get('/subscriptions', 'SubscriptionsController.index')
 Route.post('/subscriptions', 'SubscriptionsController.store')

@@ -1,399 +1,819 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { Views } from '@/types';
-import { Button, Card } from '@/components/ui';
-import { ExternalLink, Lock, UploadCloud } from 'lucide-react';
-import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
-import { Transaction } from '@mysten/sui/transactions';
-import { SUI_PACKAGE_ID } from '@/lib/sui';
-import { sealEncrypt } from '@/lib/seal';
-import { uploadWalrusBlob } from '@/lib/walrus';
 
-export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = ({ onNavigate }) => {
-  const account = useCurrentAccount();
-  const client = useSuiClient();
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
-  const [pair, setPair] = useState<string>('SUI / USDC');
-  const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG');
-  const [entryPrice, setEntryPrice] = useState<string>(''); // requis
-  const [stopLoss, setStopLoss] = useState<string>(''); // requis
-  const [takeProfit, setTakeProfit] = useState<string>(''); // requis
-  const [leverage, setLeverage] = useState<string>(''); // vide -> 0
-  const [sizeType, setSizeType] = useState<'PERCENT' | 'ABSOLUTE'>('PERCENT');
-  const [sizeValue, setSizeValue] = useState<string>(''); // requis
-  const [validDurationMs, setValidDurationMs] = useState<string>('86400000'); // +1 jour
-  const [customDuration, setCustomDuration] = useState<string>('');
-  const [thesis, setThesis] = useState<string>('');
-  const [traderCapId, setTraderCapId] = useState<string | null>(null);
-  const [capLoading, setCapLoading] = useState(false);
-  const [registerPriceSui, setRegisterPriceSui] = useState<string>('0.001');
+import React, { useEffect, useMemo, useState } from "react";
+import { Views } from "@/types";
+import { ExternalLink, Lock, UploadCloud } from "lucide-react";
+import { parseUnits } from "ethers";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { shortenAddress } from "@/lib/utils";
+import {
+  PAYMENT_TOKEN_DECIMALS,
+  PAYMENT_TOKEN_SYMBOL,
+  SHINGO_HUB_ADDRESS,
+} from "@/lib/evm/config";
+import {
+  SeasonView,
+  TraderView,
+  formatToken,
+  getWriteFeeOverrides,
+  getReadHubContract,
+  getWriteHubContract,
+} from "@/lib/evm/contracts";
+import { useEvmWallet } from "@/lib/evm/wallet";
+
+function toTraderView(raw: any): TraderView {
+  return {
+    pseudo: raw.pseudo,
+    wallet: raw.wallet,
+    currentSeasonId: BigInt(raw.currentSeasonId),
+    active: Boolean(raw.active),
+    registeredAt: BigInt(raw.registeredAt),
+  };
+}
+
+function toSeasonView(raw: any): SeasonView {
+  return {
+    id: BigInt(raw.id),
+    trader: raw.trader,
+    priceToken: BigInt(raw.priceToken),
+    collectionId: raw.collectionId,
+    status: Number(raw.status),
+    openedAt: BigInt(raw.openedAt),
+    closedAt: BigInt(raw.closedAt),
+    signalCount: BigInt(raw.signalCount),
+  };
+}
+
+const MARKETS = [
+  { label: "BTC/USD", left: "BTC", right: "USD" },
+  { label: "ETH/USD", left: "ETH", right: "USD" },
+  { label: "SOL/USD", left: "SOL", right: "USD" },
+] as const;
+
+const SIDES = [
+  { label: "Long", value: "0" },
+  { label: "Short", value: "1" },
+] as const;
+
+const ENTRY_KINDS = [
+  { label: "Market", value: "0" },
+  { label: "Limit", value: "1" },
+] as const;
+
+const VENUES = [
+  { label: "Hyperliquid", value: "0" },
+  { label: "Drift", value: "1" },
+  { label: "Flash Trade", value: "2" },
+  { label: "Jupiter", value: "3" },
+  { label: "HumidiFi", value: "4" },
+] as const;
+
+const TIMEFRAMES = [
+  { label: "1 Hour", value: "1" },
+  { label: "4 Hours", value: "4" },
+  { label: "1 Day", value: "24" },
+  { label: "1 Week", value: "168" },
+] as const;
+
+export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = ({
+  onNavigate,
+}) => {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:3333";
+  const { address, isConnected, isCorrectNetwork, switchToTargetNetwork } = useEvmWallet();
+  const [pseudo, setPseudo] = useState("");
+  const [seasonPrice, setSeasonPrice] = useState("25");
+  const [market, setMarket] = useState<string>("");
+  const [side, setSide] = useState<string>("");
+  const [entryKind, setEntryKind] = useState<string>("");
+  const [entryPrice, setEntryPrice] = useState("");
+  const [stopLoss, setStopLoss] = useState("");
+  const [takeProfitPrice, setTakeProfitPrice] = useState("");
+  const [takeProfitSize, setTakeProfitSize] = useState("");
+  const [sizeUsd, setSizeUsd] = useState("");
+  const [leverage, setLeverage] = useState("");
+  const [venue, setVenue] = useState<string>("");
+  const [timeframe, setTimeframe] = useState<string>("");
+  const [lastProtectedDataAddr, setLastProtectedDataAddr] = useState<string | null>(null);
+
+  const [isTrader, setIsTrader] = useState(false);
+  const [traderPseudo, setTraderPseudo] = useState("");
+  const [currentSeasonId, setCurrentSeasonId] = useState<bigint>(0n);
+  const [currentSeasonStatus, setCurrentSeasonStatus] = useState<"OPEN" | "CLOSED" | "NONE">(
+    "NONE"
+  );
+  const [currentSeasonPrice, setCurrentSeasonPrice] = useState<bigint>(0n);
+  const [currentSeasonSignals, setCurrentSeasonSignals] = useState<bigint>(0n);
+
+  const [loading, setLoading] = useState(false);
   const [registering, setRegistering] = useState(false);
-  const [publishMsg, setPublishMsg] = useState<string | null>(null);
-  const [publishError, setPublishError] = useState<string | null>(null);
+  const [openingSeason, setOpeningSeason] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function loadTraderCap() {
-    if (!account?.address) return;
-    setCapLoading(true);
+  const canTransact = isConnected && isCorrectNetwork && Boolean(SHINGO_HUB_ADDRESS);
+  const currentSeasonPriceDisplay = useMemo(
+    () => `${Number(formatToken(currentSeasonPrice)).toFixed(2)} ${PAYMENT_TOKEN_SYMBOL}`,
+    [currentSeasonPrice]
+  );
+
+  async function refreshTraderState() {
+    if (!address || !SHINGO_HUB_ADDRESS) return;
+    setLoading(true);
     try {
-      const caps = await client.getOwnedObjects({
-        owner: account.address,
-        filter: { StructType: `${SUI_PACKAGE_ID}::types::TraderCap` },
-        options: { showContent: true },
-      });
-      const cap = caps.data?.[0]?.data?.objectId ?? null;
-      setTraderCapId(cap);
+      const hub = getReadHubContract();
+      const trader = toTraderView(await hub.getTrader(address));
+      setIsTrader(true);
+      setTraderPseudo(trader.pseudo);
+      setCurrentSeasonId(trader.currentSeasonId);
+
+      if (trader.currentSeasonId > 0n) {
+        const season = toSeasonView(await hub.getSeason(trader.currentSeasonId));
+        setCurrentSeasonStatus(season.status === 0 ? "OPEN" : "CLOSED");
+        setCurrentSeasonPrice(season.priceToken);
+        setCurrentSeasonSignals(season.signalCount);
+      } else {
+        setCurrentSeasonStatus("NONE");
+        setCurrentSeasonPrice(0n);
+        setCurrentSeasonSignals(0n);
+      }
     } catch {
-      setTraderCapId(null);
+      setIsTrader(false);
+      setTraderPseudo("");
+      setCurrentSeasonId(0n);
+      setCurrentSeasonStatus("NONE");
+      setCurrentSeasonPrice(0n);
+      setCurrentSeasonSignals(0n);
     } finally {
-      setCapLoading(false);
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadTraderCap();
+    refreshTraderState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.address]);
+  }, [address]);
+
+  async function runTx(
+    fn: () => Promise<{ hash: string; wait: () => Promise<unknown> }>,
+    successPrefix: string
+  ) {
+    setMessage(null);
+    setError(null);
+
+    if (!address || !isConnected) {
+      setError("Connect wallet first");
+      return null;
+    }
+    if (!SHINGO_HUB_ADDRESS) {
+      setError("Missing NEXT_PUBLIC_SHINGO_HUB_ADDRESS");
+      return null;
+    }
+    if (!isCorrectNetwork) {
+      setError("Switch to Arbitrum target network first");
+      return null;
+    }
+
+    try {
+      await switchToTargetNetwork();
+      const tx = await fn();
+      await tx.wait();
+      setMessage(`${successPrefix} · ${tx.hash}`);
+      await refreshTraderState();
+      return tx.hash;
+    } catch (e: any) {
+      setError(e?.shortMessage ?? e?.message ?? "Transaction failed");
+      return null;
+    }
+  }
+
+  async function fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    retries = 3,
+    delayMs = 800
+  ) {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= retries; attempt += 1) {
+      try {
+        return await fetch(url, init);
+      } catch (error) {
+        lastError = error;
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Network request failed");
+  }
 
   async function registerTrader(e: React.FormEvent) {
     e.preventDefault();
-    if (!account?.address) {
-      setPublishError('Wallet non connecté');
+    if (!pseudo.trim()) {
+      setError("Pseudo is required");
       return;
     }
-    setPublishError(null);
-    setPublishMsg(null);
     setRegistering(true);
-    try {
-      const priceSuiNum = Number(registerPriceSui);
-      if (!Number.isFinite(priceSuiNum) || priceSuiNum < 0) {
-        throw new Error('Prix invalide');
-      }
-      const priceMist = BigInt(Math.round(priceSuiNum * 1_000_000_000));
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${SUI_PACKAGE_ID}::subscription::register_trader_open`,
-        arguments: [tx.pure.u64(priceMist)],
-      });
-      const res = await signAndExecute({ transaction: tx, options: { showEffects: true } });
-      setPublishMsg(`Trader créé · tx ${res.digest}`);
-      await loadTraderCap();
-    } catch (err: any) {
-      setPublishError(err?.message ?? 'Erreur register_trader_open');
-    } finally {
-      setRegistering(false);
+    await runTx(async () => {
+      const hub = await getWriteHubContract();
+      const feeOverrides = await getWriteFeeOverrides();
+      return hub.registerTrader(pseudo.trim(), feeOverrides);
+    }, "Trader registered");
+    setRegistering(false);
+  }
+
+  async function openSeason(e: React.FormEvent) {
+    e.preventDefault();
+    if (!seasonPrice.trim()) {
+      setError("Season price is required");
+      return;
     }
+
+    setOpeningSeason(true);
+    await runTx(async () => {
+      const hub = await getWriteHubContract();
+      const price = parseUnits(seasonPrice, PAYMENT_TOKEN_DECIMALS);
+      const feeOverrides = await getWriteFeeOverrides();
+      return hub.openSeason(price, feeOverrides);
+    }, "Season opened");
+    setOpeningSeason(false);
   }
 
   async function publishSignal(e: React.FormEvent) {
     e.preventDefault();
-    if (!account?.address) {
-      setPublishError('Wallet non connecté');
+    if (!market || !side || !entryKind || !venue || !timeframe) {
+      setError("Market, side, entry type, venue and timeframe are required");
       return;
     }
-    setPublishMsg(null);
-    setPublishError(null);
+    if (!entryPrice || !stopLoss || !takeProfitPrice || !takeProfitSize || !sizeUsd || !leverage) {
+      setError("All signal fields are required");
+      return;
+    }
+    if (!Number.isFinite(Number(entryPrice)) || Number(entryPrice) <= 0) {
+      setError("Entry price must be a positive number");
+      return;
+    }
+    if (!Number.isFinite(Number(stopLoss)) || Number(stopLoss) <= 0) {
+      setError("Stop loss must be a positive number");
+      return;
+    }
+    if (!Number.isFinite(Number(takeProfitPrice)) || Number(takeProfitPrice) <= 0) {
+      setError("Take profit price must be a positive number");
+      return;
+    }
+    if (
+      !Number.isFinite(Number(takeProfitSize)) ||
+      Number(takeProfitSize) <= 0 ||
+      Number(takeProfitSize) > 100
+    ) {
+      setError("Take profit size must be between 0 and 100");
+      return;
+    }
+    if (!Number.isFinite(Number(sizeUsd)) || Number(sizeUsd) <= 0) {
+      setError("Size (USD) must be a positive number");
+      return;
+    }
+    if (
+      !Number.isFinite(Number(leverage)) ||
+      Number(leverage) < 1 ||
+      Number(leverage) > 100 ||
+      !Number.isInteger(Number(leverage))
+    ) {
+      setError("Leverage must be an integer between 1 and 100");
+      return;
+    }
+
+    const selectedMarket = MARKETS.find((m) => m.label === market);
+    const selectedSide = SIDES.find((s) => s.value === side);
+    const selectedEntryKind = ENTRY_KINDS.find((k) => k.value === entryKind);
+    const selectedVenue = VENUES.find((v) => v.value === venue);
+    const selectedTimeframe = TIMEFRAMES.find((t) => t.value === timeframe);
+
+    if (!selectedMarket || !selectedSide || !selectedEntryKind || !selectedVenue || !selectedTimeframe) {
+      setError("Invalid signal field selection");
+      return;
+    }
+
+    setMessage("Encrypting signal payload with iExec...");
+    setError(null);
     setPublishing(true);
     try {
-      // Utilise la TraderCap détectée
-      if (!traderCapId) throw new Error('Aucune TraderCap trouvée. Enregistrez-vous via register_trader_open.');
-      const duration = validDurationMs === 'custom' ? Number(customDuration || 0) : Number(validDurationMs);
-      const vu = BigInt(Date.now() + (Number.isFinite(duration) ? duration : 0));
-
-      // Construire le payload JSON à chiffrer
-      const entry = Number(entryPrice);
-      const sl = Number(stopLoss);
-      const tp = Number(takeProfit);
-      const lev = leverage === '' ? 0 : Number(leverage);
-      const szVal = Number(sizeValue);
-
-      if (!Number.isFinite(entry) || entry <= 0) throw new Error('Entry price invalide');
-      if (!Number.isFinite(sl) || sl <= 0) throw new Error('Stop loss invalide');
-      if (!Number.isFinite(tp) || tp <= 0) throw new Error('Take profit invalide');
-      if (!Number.isFinite(szVal) || szVal <= 0) throw new Error('Size value invalide');
-      if (!Number.isFinite(lev) || lev < 0) throw new Error('Leverage invalide');
-      const side = positionType === 'LONG' ? 'BUY' : 'SELL';
-      const payload = {
-        market: pair.replace(/\s+/g, ''), // ex: "SUI/USDC"
-        side, // BUY/SELL
-        position_type: positionType, // LONG/SHORT
-        entry_type: 'MARKET',
-        entry_price: entry,
-        stop_loss: sl,
-        take_profit: tp,
-        leverage: lev,
-        size_type: sizeType,
-        size_value: szVal,
-        slippage_bps: 50,
-        valid_until: new Date(Number(vu)).toISOString(),
-        note: thesis || 'Encrypted thesis',
-      };
-
-      // 1) Chiffre avec Seal
-      const { encryptedBytes } = await sealEncrypt(payload, 2);
-      // 2) Upload Walrus
-      const upload = await uploadWalrusBlob(encryptedBytes);
-      const blobId =
-        upload.newlyCreated?.blobObject?.blobId ||
-        upload.alreadyCertified?.blobId ||
-        (() => {
-          throw new Error('Walrus blobId introuvable');
-        })();
-      const walrusUriStr = `walrus://${blobId}`;
-
-      // 3) Publie on-chain
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${SUI_PACKAGE_ID}::signal_registry::publish_signal`,
-        arguments: [
-          tx.object(traderCapId),
-          tx.pure.vector('u8', Array.from(new TextEncoder().encode(walrusUriStr))),
-          tx.pure.u64(vu),
-          tx.object('0x6'), // Clock
-        ],
+      const protectResp = await fetchWithRetry(`${backendUrl}/tee/protect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `${selectedMarket.label} ${selectedSide.label} @ ${entryPrice}`,
+          payload: {
+            market: selectedMarket.label,
+            marketBase: selectedMarket.left,
+            marketQuote: selectedMarket.right,
+            side: Number(side),
+            sideLabel: selectedSide.label,
+            entryKind: Number(entryKind),
+            entryKindLabel: selectedEntryKind.label,
+            entryPrice: Number(entryPrice),
+            stopLoss: Number(stopLoss),
+            takeProfitPrice: Number(takeProfitPrice),
+            takeProfitSize: Number(takeProfitSize),
+            sizeUsd: Number(sizeUsd),
+            leverage: Number(leverage),
+            venue: Number(venue),
+            venueLabel: selectedVenue.label,
+            timeframe: Number(timeframe),
+            timeframeLabel: selectedTimeframe.label,
+            // Backward compatibility fields used by older consumers.
+            entry: Number(entryPrice),
+            stop: Number(stopLoss),
+            takeProfit: Number(takeProfitPrice),
+            seasonId: currentSeasonId.toString(),
+            timestamp: new Date().toISOString(),
+          },
+        }),
       });
-      const res = await signAndExecute({
-        transaction: tx,
-        options: { showEffects: true },
-      });
-      setPublishMsg(`Signal publié. Walrus=${walrusUriStr} Tx=${res.digest}`);
-    } catch (err: any) {
-      setPublishError(err?.message ?? 'Erreur publish');
+
+      const protectResult = await protectResp.json();
+      if (!protectResp.ok) {
+        throw new Error(protectResult?.error ?? "iExec protectData failed");
+      }
+      if (!protectResult?.address) {
+        throw new Error("Invalid iExec response: missing protected data address");
+      }
+
+      setLastProtectedDataAddr(protectResult.address as string);
+
+      const txHash = await runTx(async () => {
+        const hub = await getWriteHubContract();
+        const feeOverrides = await getWriteFeeOverrides();
+        return hub.publishSignal(protectResult.address, feeOverrides);
+      }, "Signal encrypted + published");
+
+      if (txHash && currentSeasonId > 0n) {
+        try {
+          const syncResp = await fetchWithRetry(
+            `${backendUrl}/tee/grant-season-subscribers`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                seasonId: currentSeasonId.toString(),
+                protectedDataAddr: protectResult.address,
+              }),
+            },
+            2,
+            600
+          );
+          if (!syncResp.ok) {
+            // Non-blocking: on-chain-first relay catches up from events.
+            setMessage("Signal published on-chain. TEE access sync will be caught up by relay.");
+          }
+        } catch {
+          // Non-blocking: on-chain-first relay catches up from events.
+          setMessage("Signal published on-chain. TEE access sync will be caught up by relay.");
+        }
+      }
+    } catch (e: any) {
+      const message = e?.shortMessage ?? e?.message ?? "Signal encryption failed";
+      if (String(message).toLowerCase().includes("failed to fetch")) {
+        setError(
+          `TEE backend unreachable at ${backendUrl}. Wait a few seconds and retry (API may still be starting).`
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setPublishing(false);
     }
   }
 
+  async function closeSeason() {
+    const seasonToClose = currentSeasonId;
+    setClosing(true);
+    const txHash = await runTx(async () => {
+      const hub = await getWriteHubContract();
+      const feeOverrides = await getWriteFeeOverrides();
+      return hub.closeSeason(feeOverrides);
+    }, "Season closed");
+
+    if (txHash && seasonToClose > 0n) {
+      try {
+        const syncResp = await fetch(`${backendUrl}/tee/publicize-season`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            seasonId: seasonToClose.toString(),
+          }),
+        });
+        if (!syncResp.ok) {
+          setMessage("Season closed on-chain. Public TEE access will be caught up by relay.");
+        }
+      } catch (e: any) {
+        setMessage("Season closed on-chain. Public TEE access will be caught up by relay.");
+      }
+    }
+    setClosing(false);
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      <div className="mb-12">
-        <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4 tracking-tighter">Creator Studio</h2>
-        <p className="text-slate-400 text-lg max-w-2xl leading-relaxed opacity-80">Publish encrypted signals to the protocol.</p>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pb-20 pt-10 sm:px-6 lg:px-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+            Creator Studio
+          </h2>
+          <p className="text-slate-300">
+            Full on-chain flow: register trader, open season, publish protected signal, close season.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="border-white/15 bg-slate-950/70"
+          onClick={() => onNavigate(Views.SIGNALS)}
+        >
+          Open signals terminal
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Publish Form */}
-        <div className="lg:col-span-2">
-           <Card className="p-8 border-violet-500/30 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 opacity-5">
-                 <Lock className="w-32 h-32 text-violet-500" />
-              </div>
-              
-              <div className="relative z-10">
-                 <h3 className="text-xl font-bold text-white font-display mb-8 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-violet-500/20 flex items-center justify-center text-violet-400"><UploadCloud className="w-4 h-4" /></div>
-                    New Signal
-                 </h3>
+      <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+        <Card className="glass-panel border-violet-300/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-display text-2xl text-white">
+              <UploadCloud className="h-5 w-5 text-violet-200" />
+              On-chain actions
+            </CardTitle>
+            <CardDescription>
+              ShingoHub contract address:{" "}
+              <span className="font-mono text-xs text-slate-300">
+                {SHINGO_HUB_ADDRESS ? shortenAddress(SHINGO_HUB_ADDRESS, 10, 8) : "missing"}
+              </span>
+            </CardDescription>
+          </CardHeader>
 
-                 <form className="space-y-6" onSubmit={publishSignal}>
-                    {!traderCapId && (
-                      <div className="border border-amber-400/40 bg-amber-500/5 rounded-lg p-4 space-y-3">
-                        <div className="text-amber-300 text-sm font-mono">Aucune TraderCap trouvée. Enregistrez-vous via register_trader_open.</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[10px] font-bold text-amber-300 uppercase tracking-widest mb-2">Prix abonnement (SUI)</label>
-                            <input
-                              type="number"
-                              step="0.0001"
-                              min="0"
-                              value={registerPriceSui}
-                              onChange={(e) => setRegisterPriceSui(e.target.value)}
-                              className="w-full bg-black border border-amber-400/40 rounded px-3 py-2 text-amber-100 font-mono text-sm focus:border-amber-300 outline-none"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <Button type="button" variant="primary" fullWidth disabled={registering} onClick={registerTrader}>
-                              {registering ? 'Création...' : 'Créer profil trader'}
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="text-[11px] text-amber-200 font-mono">Cette action écrit on-chain (testnet) et crée ta TraderCap + TraderProfile.</div>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-6">
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Pair</label>
-                          <select
-                            value={pair}
-                            onChange={(e) => setPair(e.target.value)}
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white text-sm focus:border-violet-500 outline-none appearance-none font-mono"
-                          >
-                             <option value="SUI / USDC">SUI / USDC</option>
-                             <option value="CETUS / SUI">CETUS / SUI</option>
-                             <option value="NAVX / SUI">NAVX / SUI</option>
-                          </select>
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Side</label>
-                          <div className="flex gap-2">
-                             <button
-                               type="button"
-                               onClick={() => setPositionType('LONG')}
-                               className={`flex-1 py-3 text-xs font-bold tracking-wider rounded transition-colors ${
-                                 positionType === 'LONG'
-                                   ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-                                   : 'bg-transparent border border-white/10 text-slate-500 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300'
-                               }`}
-                             >
-                               LONG
-                             </button>
-                             <button
-                               type="button"
-                               onClick={() => setPositionType('SHORT')}
-                               className={`flex-1 py-3 text-xs font-bold tracking-wider rounded transition-colors ${
-                                 positionType === 'SHORT'
-                                   ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-                                   : 'bg-transparent border border-white/10 text-slate-500 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
-                               }`}
-                             >
-                               SHORT
-                             </button>
-                          </div>
-                       </div>
-                    </div>
+          <CardContent className="space-y-5">
+            {!isTrader && (
+              <form className="space-y-3 rounded-xl border border-amber-300/35 bg-amber-400/10 p-4" onSubmit={registerTrader}>
+                <p className="text-sm text-amber-100">
+                  Register your trader identity first (unique pseudo on-chain).
+                </p>
+                <div>
+                  <Label htmlFor="pseudo">Pseudo</Label>
+                  <Input
+                    id="pseudo"
+                    value={pseudo}
+                    onChange={(e) => setPseudo(e.target.value)}
+                    placeholder="ex: alpha_sensei"
+                    className="mt-2 border-amber-200/30 bg-slate-950/80"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-amber-300 text-slate-950 hover:bg-amber-200"
+                  disabled={registering || !canTransact}
+                >
+                  {registering ? "Registering..." : "Register trader"}
+                </Button>
+              </form>
+            )}
 
-                    <div className="grid grid-cols-3 gap-6">
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Entry</label>
-                          <input
-                            type="number"
-                            value={entryPrice}
-                            onChange={(e) => setEntryPrice(e.target.value)}
-                            placeholder="e.g. 1.234"
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none"
-                          />
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Stop</label>
-                          <input
-                            type="number"
-                            value={stopLoss}
-                            onChange={(e) => setStopLoss(e.target.value)}
-                            placeholder="0.00"
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none"
-                          />
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Target</label>
-                          <input
-                            type="number"
-                            value={takeProfit}
-                            onChange={(e) => setTakeProfit(e.target.value)}
-                            placeholder="0.00"
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none"
-                          />
-                       </div>
-                    </div>
+            {isTrader && (
+              <>
+                <form className="space-y-3 rounded-xl border border-white/10 bg-slate-950/70 p-4" onSubmit={openSeason}>
+                  <p className="text-sm text-slate-200">
+                    Open a new season with a fixed subscription price.
+                  </p>
+                  <div>
+                    <Label htmlFor="seasonPrice">
+                      Season price ({PAYMENT_TOKEN_SYMBOL})
+                    </Label>
+                    <Input
+                      id="seasonPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={seasonPrice}
+                      onChange={(e) => setSeasonPrice(e.target.value)}
+                      className="mt-2 border-white/10 bg-slate-900/80"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-red-600 text-white hover:bg-red-500"
+                    disabled={openingSeason || !canTransact || currentSeasonStatus === "OPEN"}
+                  >
+                    {openingSeason ? "Opening..." : "Open season"}
+                  </Button>
+                </form>
 
-                    <div className="grid grid-cols-3 gap-6">
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Leverage</label>
-                          <input
-                            type="number"
-                            value={leverage}
-                            onChange={(e) => setLeverage(e.target.value)}
-                            placeholder="5"
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none"
-                          />
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Size Type</label>
-                          <select
-                            value={sizeType}
-                            onChange={(e) => setSizeType(e.target.value as 'PERCENT' | 'ABSOLUTE')}
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white text-sm focus:border-violet-500 outline-none appearance-none font-mono"
-                          >
-                             <option value="PERCENT">PERCENT</option>
-                             <option value="ABSOLUTE">ABSOLUTE</option>
-                          </select>
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Size Value</label>
-                          <input
-                            type="number"
-                            value={sizeValue}
-                            onChange={(e) => setSizeValue(e.target.value)}
-                            placeholder="2"
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none"
-                          />
-                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Validité</label>
-                          <select
-                            value={validDurationMs}
-                            onChange={(e) => setValidDurationMs(e.target.value)}
-                            className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white text-sm focus:border-violet-500 outline-none appearance-none font-mono"
-                          >
-                            <option value="3600000">+1 heure</option>
-                            <option value="86400000">+1 jour</option>
-                            <option value="259200000">+3 jours</option>
-                            <option value="604800000">+7 jours</option>
-                            <option value="2592000000">+30 jours</option>
-                            <option value="custom">Durée personnalisée (ms)</option>
-                          </select>
-                       </div>
-                       {validDurationMs === 'custom' && (
-                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Durée personnalisée (ms)</label>
-                            <input
-                              type="number"
-                              value={customDuration}
-                              onChange={(e) => setCustomDuration(e.target.value)}
-                              placeholder="ex: 3600000 pour 1h"
-                              className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none"
-                            />
-                         </div>
-                       )}
-                    </div>
-
+                <form className="space-y-3 rounded-xl border border-white/10 bg-slate-950/70 p-4" onSubmit={publishSignal}>
+                  <p className="text-sm text-slate-200">
+                    Encrypt payload with iExec TEE then publish metadata on-chain.
+                  </p>
+                  <div>
+                    <Label htmlFor="signalSeason">Season</Label>
+                    <Input
+                      id="signalSeason"
+                      value={currentSeasonId > 0n ? `#${currentSeasonId.toString()}` : "No active season"}
+                      readOnly
+                      className="mt-2 border-white/10 bg-slate-900/60 text-slate-400"
+                    />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div>
-                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Thesis (Encrypted)</label>
-                       <textarea 
-                          className="w-full bg-black border border-white/10 rounded px-4 py-3 text-white font-mono text-sm focus:border-violet-500 outline-none min-h-[100px]"
-                          placeholder="// Explain your thesis here..."
-                          value={thesis}
-                          onChange={(e) => setThesis(e.target.value)}
-                       ></textarea>
+                      <Label htmlFor="signalMarket">Market</Label>
+                      <Select value={market} onValueChange={setMarket}>
+                        <SelectTrigger id="signalMarket" className="mt-2 border-white/10 bg-slate-900/80">
+                          <SelectValue placeholder="Select market" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MARKETS.map((item) => (
+                            <SelectItem key={item.label} value={item.label}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-
-                    {publishError && <div className="text-red-400 text-xs font-mono">{publishError}</div>}
-                    {publishMsg && <div className="text-emerald-400 text-xs font-mono">{publishMsg}</div>}
-
-                    <div className="pt-4">
-                       <Button variant="primary" size="lg" fullWidth type="submit" disabled={publishing}>
-                          {publishing ? 'Publishing...' : 'PUBLISH SIGNAL'}
-                       </Button>
+                    <div>
+                      <Label htmlFor="signalSide">Side</Label>
+                      <Select value={side} onValueChange={setSide}>
+                        <SelectTrigger id="signalSide" className="mt-2 border-white/10 bg-slate-900/80">
+                          <SelectValue placeholder="Select side" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SIDES.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                 </form>
-              </div>
-           </Card>
-        </div>
+                    <div>
+                      <Label htmlFor="signalEntryType">Entry Type</Label>
+                      <Select value={entryKind} onValueChange={setEntryKind}>
+                        <SelectTrigger id="signalEntryType" className="mt-2 border-white/10 bg-slate-900/80">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ENTRY_KINDS.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="signalEntryPrice">Entry Price</Label>
+                      <Input
+                        id="signalEntryPrice"
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        value={entryPrice}
+                        onChange={(e) => setEntryPrice(e.target.value)}
+                        placeholder="65000"
+                        className="mt-2 border-white/10 bg-slate-900/80"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signalStopLoss">Stop Loss</Label>
+                      <Input
+                        id="signalStopLoss"
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        value={stopLoss}
+                        onChange={(e) => setStopLoss(e.target.value)}
+                        placeholder="63000"
+                        className="mt-2 border-white/10 bg-slate-900/80"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signalTakeProfitPrice">Take Profit Price</Label>
+                      <Input
+                        id="signalTakeProfitPrice"
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        value={takeProfitPrice}
+                        onChange={(e) => setTakeProfitPrice(e.target.value)}
+                        placeholder="70000"
+                        className="mt-2 border-white/10 bg-slate-900/80"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signalTakeProfitSize">Take Profit Size (%)</Label>
+                      <Input
+                        id="signalTakeProfitSize"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={takeProfitSize}
+                        onChange={(e) => setTakeProfitSize(e.target.value)}
+                        placeholder="100"
+                        className="mt-2 border-white/10 bg-slate-900/80"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signalSizeUsd">Size (USD)</Label>
+                      <Input
+                        id="signalSizeUsd"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={sizeUsd}
+                        onChange={(e) => setSizeUsd(e.target.value)}
+                        placeholder="1000"
+                        className="mt-2 border-white/10 bg-slate-900/80"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div>
+                      <Label htmlFor="signalLeverage">Leverage</Label>
+                      <Input
+                        id="signalLeverage"
+                        type="number"
+                        min="1"
+                        max="100"
+                        step="1"
+                        value={leverage}
+                        onChange={(e) => setLeverage(e.target.value)}
+                        placeholder="10"
+                        className="mt-2 border-white/10 bg-slate-900/80"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signalVenue">Venue</Label>
+                      <Select value={venue} onValueChange={setVenue}>
+                        <SelectTrigger id="signalVenue" className="mt-2 border-white/10 bg-slate-900/80">
+                          <SelectValue placeholder="Venue" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {VENUES.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="signalTimeframe">Timeframe</Label>
+                      <Select value={timeframe} onValueChange={setTimeframe}>
+                        <SelectTrigger id="signalTimeframe" className="mt-2 border-white/10 bg-slate-900/80">
+                          <SelectValue placeholder="Time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEFRAMES.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {lastProtectedDataAddr && (
+                    <div className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 p-3 text-xs">
+                      <p className="mb-1 text-emerald-100">Last protectedDataAddr</p>
+                      <p className="break-all font-mono text-emerald-200">{lastProtectedDataAddr}</p>
+                    </div>
+                  )}
+                  <Button
+                    type="submit"
+                    className="w-full bg-red-600 text-white hover:bg-red-500"
+                    disabled={publishing || !canTransact || currentSeasonStatus !== "OPEN"}
+                  >
+                    {publishing ? "Encrypting + publishing..." : "Encrypt + Publish signal"}
+                  </Button>
+                </form>
 
-        {/* Sidebar */}
+                <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-4">
+                  <p className="mb-3 text-sm text-rose-100">
+                    Closing a season makes all season signals public.
+                  </p>
+                  <Button
+                    className="w-full bg-rose-300 text-slate-950 hover:bg-rose-200"
+                    disabled={closing || !canTransact || currentSeasonStatus !== "OPEN"}
+                    onClick={closeSeason}
+                  >
+                    {closing ? "Closing..." : "Close season"}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {error && <Badge variant="destructive">{error}</Badge>}
+            {message && (
+              <Badge className="whitespace-normal break-all border-emerald-300/30 bg-emerald-400/10 text-emerald-100">
+                {message}
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="space-y-6">
-           <Card className="p-6 bg-white/5">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Revenue (30d)</h3>
-              <div className="text-3xl font-mono font-bold text-white mb-1">2,450 SUI</div>
-              <div className="text-xs text-emerald-400 mb-6 font-mono">+12.5% vs last month</div>
-              
-              <div className="space-y-4 border-t border-white/5 pt-4">
-                 {[1, 2, 3].map(i => (
-                    <div key={i} className="flex justify-between items-center">
-                       <div>
-                          <div className="text-white font-bold font-mono text-xs">142.5 SUI</div>
-                          <div className="text-[10px] text-slate-500 uppercase">Subscription Payout</div>
-                       </div>
-                       <ExternalLink className="w-3 h-3 text-slate-600 hover:text-white cursor-pointer" />
-                    </div>
-                 ))}
+          <Card className="glass-panel border-white/10">
+            <CardHeader>
+              <CardTitle className="font-display text-xl text-white">Status</CardTitle>
+              <CardDescription>Live state from ShingoHub.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                <span className="text-slate-300">Wallet</span>
+                <span className="font-mono text-slate-100">
+                  {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Not connected"}
+                </span>
               </div>
-           </Card>
-        </div>
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                <span className="text-slate-300">Trader profile</span>
+                <span className="font-mono text-slate-100">{loading ? "loading..." : isTrader ? "active" : "missing"}</span>
+              </div>
+              {isTrader && (
+                <>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                    <span className="text-slate-300">Pseudo</span>
+                    <span className="font-mono text-slate-100">{traderPseudo}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                    <span className="text-slate-300">Current season</span>
+                    <span className="font-mono text-slate-100">
+                      {currentSeasonId > 0n ? `#${currentSeasonId.toString()}` : "none"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                    <span className="text-slate-300">Season status</span>
+                    <span className="font-mono text-slate-100">{currentSeasonStatus}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                    <span className="text-slate-300">Price</span>
+                    <span className="font-mono text-slate-100">{currentSeasonPriceDisplay}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                    <span className="text-slate-300">Signals in season</span>
+                    <span className="font-mono text-slate-100">{currentSeasonSignals.toString()}</span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
+          <Card className="glass-panel border-white/10">
+            <CardHeader>
+              <CardTitle className="font-display text-xl text-white">Flow checklist</CardTitle>
+              <CardDescription>Expected sequence for end-to-end usage.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-slate-300">
+              <p>1. Register trader (once)</p>
+              <p>2. Open season and set fixed price</p>
+              <p>3. Click Encrypt + Publish (iExec + on-chain in one flow)</p>
+              <p>4. Subscribers pay and receive access rights</p>
+              <p>5. Close season to make all season signals public</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-panel border-violet-300/20">
+            <CardContent className="flex items-start gap-3 p-4 text-sm text-violet-100">
+              <Lock className="mt-0.5 h-4 w-4" />
+              The contract stores only metadata. Encryption/decryption stays in the iExec TEE flow.
+            </CardContent>
+          </Card>
+
+          <Card className="glass-panel border-white/10">
+            <CardContent className="space-y-2 p-4 text-sm">
+              <p className="text-slate-300">Contract explorer</p>
+              <a
+                href={SHINGO_HUB_ADDRESS ? `https://sepolia.arbiscan.io/address/${SHINGO_HUB_ADDRESS}` : "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-red-200 hover:text-red-100"
+              >
+                View on Arbiscan
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

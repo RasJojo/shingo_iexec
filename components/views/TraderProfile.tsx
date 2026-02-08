@@ -1,412 +1,633 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Views } from '@/types';
-import { TRADERS } from '@/lib/data';
-import { Button, Card, Badge, Metric } from '@/components/ui';
-import { ArrowLeft, ShieldCheck, ExternalLink, Share2, Zap, FileJson, LayoutDashboard, Lock } from 'lucide-react';
-import { useCurrentAccount, useCurrentWallet, useSignAndExecuteTransaction, useSignPersonalMessage, useSuiClient } from '@mysten/dapp-kit';
-import { Transaction } from '@mysten/sui/transactions';
-import { SUI_PACKAGE_ID } from '@/lib/sui';
-import { fetchWalrusBlob } from '@/lib/walrus';
-import { buildSealApproveTx, createSealSessionKey, sealDecryptWithSession } from '@/lib/seal';
+import React, { useEffect, useMemo, useState } from "react";
+import { Views } from "@/types";
+import { ArrowLeft, ExternalLink, Share2, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { WalletAvatar } from "@/components/ui/wallet-avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { shortenAddress } from "@/lib/utils";
+import {
+  LOG_LOOKBACK_BLOCKS,
+  PAYMENT_TOKEN_DECIMALS,
+  PAYMENT_TOKEN_SYMBOL,
+  SHINGO_DEPLOY_BLOCK,
+  SHINGO_HUB_ADDRESS,
+} from "@/lib/evm/config";
+import {
+  SeasonView,
+  SignalView,
+  TraderView,
+  formatToken,
+  getSeasonSubscribersSafe,
+  getPublicProvider,
+  getReadHubContract,
+  getWriteFeeOverrides,
+  getWriteHubContract,
+  getWriteTokenContract,
+} from "@/lib/evm/contracts";
+import { useEvmWallet } from "@/lib/evm/wallet";
 
-const MONTHLY_RETURNS = [
-    { month: 'Jan', val: 12.4 },
-    { month: 'Feb', val: -2.1 },
-    { month: 'Mar', val: 8.5 },
-    { month: 'Apr', val: 15.2 },
-    { month: 'May', val: 3.2 },
-    { month: 'Jun', val: -0.5 },
-    { month: 'Jul', val: 5.4 },
-    { month: 'Aug', val: 10.1 },
-    { month: 'Sep', val: 4.2 },
-    { month: 'Oct', val: 18.4 },
-    { month: 'Nov', val: -1.2 },
-    { month: 'Dec', val: 7.8 },
-];
+type TraderData = {
+  pseudo: string;
+  wallet: string;
+  currentSeasonId: bigint;
+  registeredAt: bigint;
+};
 
-// Historique mock (données publiques, pour illustrer la perf passée)
-const MOCK_HISTORY = [
-  { date: '2025-10-31', market: 'SUI/USDC', side: 'SELL', entry: 1.3890, exit: 1.3415, pnl: 3.4 },
-  { date: '2025-11-06', market: 'CETUS/USDC', side: 'SELL', entry: 0.0378, exit: 0.0353, pnl: 6.6 },
-  { date: '2025-11-20', market: 'SUI/USDC', side: 'BUY', entry: 1.495, exit: 1.606, pnl: 7.4 },
-  { date: '2025-11-22', market: 'NAVX/USDC', side: 'BUY', entry: 0.01387, exit: 0.01680, pnl: 21.1 },
-  { date: '2025-11-22', market: 'NAVX/USDC', side: 'BUY', entry: 0.0207, exit: 0.01567, pnl: -24.4 },
-];
+type SeasonData = {
+  id: bigint;
+  status: number;
+  priceToken: bigint;
+  signalCount: bigint;
+  subscribers: number;
+};
 
-export const TraderProfile: React.FC<{ onNavigate: (view: Views) => void; traderId: string | null; traderAddr: string | null; traderCapId?: string | null; traderProfileId?: string | null }> = ({ onNavigate, traderId, traderAddr, traderCapId, traderProfileId }) => {
-  const account = useCurrentAccount();
-  const client = useSuiClient();
-  const { currentWallet, currentAccount } = useCurrentWallet();
-  const signPersonalMessage = useSignPersonalMessage();
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
-  const [priceSui, setPriceSui] = useState('0.001');
-  const [expiryDays, setExpiryDays] = useState('30');
+type PublicHistoryRow = {
+  seasonId: bigint;
+  signalId: bigint;
+  protectedDataAddr: string;
+  publishedAt: bigint;
+  isPublic: boolean;
+};
+
+type DecryptResult = {
+  payload: unknown;
+  payloadWarning?: string | null;
+  selectedApp?: string;
+  selectedAppName?: string | null;
+};
+
+function toTraderView(raw: any): TraderView {
+  return {
+    pseudo: raw.pseudo,
+    wallet: raw.wallet,
+    currentSeasonId: BigInt(raw.currentSeasonId),
+    active: Boolean(raw.active),
+    registeredAt: BigInt(raw.registeredAt),
+  };
+}
+
+function toSeasonView(raw: any): SeasonView {
+  return {
+    id: BigInt(raw.id),
+    trader: raw.trader,
+    priceToken: BigInt(raw.priceToken),
+    collectionId: raw.collectionId,
+    status: Number(raw.status),
+    openedAt: BigInt(raw.openedAt),
+    closedAt: BigInt(raw.closedAt),
+    signalCount: BigInt(raw.signalCount),
+  };
+}
+
+function toSignalView(raw: any): SignalView {
+  return {
+    id: BigInt(raw.id),
+    seasonId: BigInt(raw.seasonId),
+    trader: raw.trader,
+    protectedDataAddr: raw.protectedDataAddr,
+    publishedAt: BigInt(raw.publishedAt),
+  };
+}
+
+export const TraderProfile: React.FC<{
+  onNavigate: (view: Views) => void;
+  traderId: string | null;
+  traderAddr: string | null;
+}> = ({ onNavigate, traderId, traderAddr }) => {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:3333";
+  const { address, isConnected, isCorrectNetwork, switchToTargetNetwork } = useEvmWallet();
+  const [loading, setLoading] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subError, setSubError] = useState<string | null>(null);
   const [subSuccess, setSubSuccess] = useState<string | null>(null);
-  const [loadingPrice, setLoadingPrice] = useState(false);
-  const [signals, setSignals] = useState<
-    { id: string; walrusUri: string; validUntil: string; decryptedJson?: string; error?: string }[]
-  >([]);
-  const [signalsMsg, setSignalsMsg] = useState<string | null>(null);
-  const [signalsError, setSignalsError] = useState<string | null>(null);
-  const [signalsLoading, setSignalsLoading] = useState(false);
+  const [trader, setTrader] = useState<TraderData | null>(null);
+  const [season, setSeason] = useState<SeasonData | null>(null);
+  const [publicHistory, setPublicHistory] = useState<PublicHistoryRow[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [decrypting, setDecrypting] = useState<Record<string, boolean>>({});
+  const [decryptErrors, setDecryptErrors] = useState<Record<string, string>>({});
+  const [decryptedResults, setDecryptedResults] = useState<Record<string, DecryptResult>>({});
 
-  const fallback = TRADERS.find(t => t.id === traderId) || TRADERS[0];
-  const trader = useMemo(() => {
-    if (traderAddr) {
-      return {
-        ...fallback,
-        handle: traderAddr,
-        subscriptionPrice: Number(priceSui),
-        avatar: `https://api.dicebear.com/7.x/shapes/svg?seed=${traderAddr}`,
-        isVerified: true,
-      };
-    }
-    return fallback;
-  }, [traderAddr, fallback, priceSui]);
+  const wallet = traderAddr ?? traderId;
 
-  // Charge le prix on-chain depuis le TraderProfile (shared)
   useEffect(() => {
-    async function loadPrice() {
-      if (!traderProfileId) return;
-      setLoadingPrice(true);
+    async function loadProfile() {
+      if (!wallet || !SHINGO_HUB_ADDRESS) return;
+      setLoading(true);
+      setSubError(null);
+      setHistoryError(null);
       try {
-        const obj = await client.getObject({ id: traderProfileId, options: { showContent: true } });
-        const fields: any = (obj as any).data?.content?.fields;
-        const priceMist = fields?.price_mist ? Number(fields.price_mist) : null;
-        if (priceMist != null) {
-          setPriceSui((priceMist / 1_000_000_000).toString());
+        const hub = getReadHubContract();
+        const traderRaw = toTraderView(await hub.getTrader(wallet));
+        setTrader({
+          pseudo: traderRaw.pseudo,
+          wallet: traderRaw.wallet,
+          currentSeasonId: traderRaw.currentSeasonId,
+          registeredAt: traderRaw.registeredAt,
+        });
+
+        if (traderRaw.currentSeasonId > 0n) {
+          const seasonRaw = toSeasonView(await hub.getSeason(traderRaw.currentSeasonId));
+          const subscribers = await getSeasonSubscribersSafe(hub, traderRaw.currentSeasonId);
+          setSeason({
+            id: seasonRaw.id,
+            status: seasonRaw.status,
+            priceToken: seasonRaw.priceToken,
+            signalCount: seasonRaw.signalCount,
+            subscribers: subscribers.length,
+          });
+        } else {
+          setSeason(null);
         }
+
+        let seasonIds: bigint[] = [];
+        try {
+          seasonIds = ((await hub.getTraderSeasonIds(wallet)) as bigint[]).filter((id) => id > 0n);
+        } catch {
+          const provider = getPublicProvider();
+          const latestBlock = await provider.getBlockNumber();
+          const fromBlock =
+            SHINGO_DEPLOY_BLOCK > 0
+              ? SHINGO_DEPLOY_BLOCK
+              : Math.max(0, latestBlock - LOG_LOOKBACK_BLOCKS);
+          const closedLogs = await hub.queryFilter(
+            hub.filters.SeasonClosed(wallet),
+            fromBlock,
+            latestBlock
+          );
+          seasonIds = [...new Set(closedLogs.map((log: any) => BigInt(log.args?.seasonId ?? 0n).toString()))]
+            .map((id) => BigInt(id))
+            .filter((id) => id > 0n);
+        }
+
+        if (seasonIds.length === 0) {
+          setPublicHistory([]);
+          return;
+        }
+
+        const seasonDetails = await Promise.all(
+          seasonIds.map(async (seasonId) => ({
+            seasonId,
+            season: toSeasonView(await hub.getSeason(seasonId)),
+          }))
+        );
+        const closedSeasonIds = seasonDetails
+          .filter(({ season }) => season.status !== 0)
+          .map(({ seasonId }) => seasonId);
+
+        if (closedSeasonIds.length === 0) {
+          setPublicHistory([]);
+          return;
+        }
+
+        const historyRows: PublicHistoryRow[] = [];
+        for (const seasonId of closedSeasonIds) {
+          const seasonSignals = (await hub.getSeasonSignals(seasonId, 0, 200)) as any[];
+          for (const rawSignal of seasonSignals) {
+            const signal = toSignalView(rawSignal);
+            historyRows.push({
+              seasonId: signal.seasonId,
+              signalId: signal.id,
+              protectedDataAddr: signal.protectedDataAddr,
+              publishedAt: signal.publishedAt,
+              isPublic: true,
+            });
+          }
+        }
+
+        historyRows.sort((a, b) => Number(b.publishedAt - a.publishedAt));
+        setPublicHistory(historyRows);
       } catch (e: any) {
-        setSubError(e?.message ?? 'Erreur lecture prix on-chain');
+        setSubError(e?.shortMessage ?? e?.message ?? "Unable to load trader profile");
+        setPublicHistory([]);
       } finally {
-        setLoadingPrice(false);
+        setLoading(false);
       }
     }
-    loadPrice();
-  }, [client, traderProfileId]);
 
-  // Stats calculées sur l'historique mock (publique)
-  const mockStats = useMemo(() => {
-    if (MOCK_HISTORY.length === 0) return { winrate: 0, avgPnl: 0, equity: [] as number[], best: 0, worst: 0 };
-    let wins = 0;
-    let equity = 1;
-    const curve: number[] = [];
-    let sum = 0;
-    let best = -Infinity;
-    let worst = Infinity;
-    MOCK_HISTORY.forEach((t) => {
-      if (t.pnl > 0) wins += 1;
-      sum += t.pnl;
-      best = Math.max(best, t.pnl);
-      worst = Math.min(worst, t.pnl);
-      equity *= 1 + t.pnl / 100;
-      curve.push(Number(equity.toFixed(3)));
-    });
-    return {
-      winrate: Math.round((wins / MOCK_HISTORY.length) * 100),
-      avgPnl: Number((sum / MOCK_HISTORY.length).toFixed(2)),
-      equity: curve,
-      best: Number(best.toFixed(2)),
-      worst: Number(worst.toFixed(2)),
-    };
-  }, []);
+    loadProfile();
+  }, [wallet, subSuccess]);
 
-  // Helper pour dessiner une courbe lissée (catmull-rom vers bezier)
-  function buildSmoothPath(vals: number[], width = 260, height = 120) {
-    if (vals.length === 0) return '';
-    const max = Math.max(...vals, 1);
-    const points = vals.map((v, i) => {
-      const x = (i / Math.max(vals.length - 1, 1)) * width;
-      const y = height - (v / max) * (height - 20);
-      return { x, y };
-    });
-    if (points.length < 2) return '';
-    let d = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i === 0 ? i : i - 1];
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      const p3 = points[i + 2] ?? p2;
-      const cp1x = p1.x + (p2.x - p0.x) / 6;
-      const cp1y = p1.y + (p2.y - p0.y) / 6;
-      const cp2x = p2.x - (p3.x - p1.x) / 6;
-      const cp2y = p2.y - (p3.y - p1.y) / 6;
-      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  const priceDisplay = useMemo(() => {
+    if (!season) return `0 ${PAYMENT_TOKEN_SYMBOL}`;
+    return `${Number(formatToken(season.priceToken)).toFixed(2)} ${PAYMENT_TOKEN_SYMBOL}`;
+  }, [season]);
+
+  function historyKey(row: PublicHistoryRow) {
+    return `${row.seasonId.toString()}-${row.signalId.toString()}`;
+  }
+
+  function formatTimestamp(seconds: bigint) {
+    const timestamp = Number(seconds);
+    if (!Number.isFinite(timestamp) || timestamp <= 0) {
+      return "n/a";
     }
-    return d;
+    return new Date(timestamp * 1000).toLocaleString();
+  }
+
+  function renderDecryptedPayload(payload: unknown) {
+    if (!payload) {
+      return <p className="text-xs text-slate-400">No payload</p>;
+    }
+    if (typeof payload === "string") {
+      return <p className="break-all font-mono text-xs text-slate-200">{payload}</p>;
+    }
+    if (typeof payload !== "object") {
+      return <p className="break-all font-mono text-xs text-slate-200">{String(payload)}</p>;
+    }
+
+    const data = payload as Record<string, unknown>;
+    const rows = [
+      { label: "Market", value: data.market },
+      { label: "Side", value: data.sideLabel ?? data.side },
+      { label: "Entry Type", value: data.entryKindLabel ?? data.entryKind },
+      { label: "Entry", value: data.entryPrice ?? data.entry },
+      { label: "Stop Loss", value: data.stopLoss ?? data.stop },
+      { label: "Take Profit", value: data.takeProfitPrice ?? data.takeProfit },
+      { label: "TP Size (%)", value: data.takeProfitSize },
+      { label: "Size USD", value: data.sizeUsd },
+      { label: "Leverage", value: data.leverage },
+      { label: "Venue", value: data.venueLabel ?? data.venue },
+      { label: "Timeframe", value: data.timeframeLabel ?? data.timeframe },
+    ].filter((row) => row.value !== undefined && row.value !== null && String(row.value).trim() !== "");
+
+    return (
+      <div className="space-y-2">
+        {rows.length > 0 ? (
+          <div className="grid gap-2 md:grid-cols-2">
+            {rows.map((row) => (
+              <div key={row.label} className="rounded-md border border-white/10 bg-slate-900/80 p-2">
+                <p className="text-[10px] uppercase tracking-wide text-slate-500">{row.label}</p>
+                <p className="break-all font-mono text-xs text-slate-100">{String(row.value)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400">No mapped fields found. Raw payload below.</p>
+        )}
+        <details className="rounded-md border border-white/10 bg-slate-900/70 p-2">
+          <summary className="cursor-pointer text-xs text-slate-300">Raw decrypted payload (JSON)</summary>
+          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-white/10 bg-slate-900/80 p-2 text-xs text-slate-100">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </details>
+      </div>
+    );
+  }
+
+  async function decryptPublicSignal(row: PublicHistoryRow) {
+    const key = historyKey(row);
+    const requester = address ?? "0x0000000000000000000000000000000000000000";
+
+    setDecrypting((prev) => ({ ...prev, [key]: true }));
+    setDecryptErrors((prev) => ({ ...prev, [key]: "" }));
+    try {
+      const resp = await fetchWithRetry(
+        `${backendUrl}/tee/decrypt`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            signalId: row.signalId.toString(),
+            requester,
+          }),
+        },
+        2,
+        500
+      );
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        throw new Error(data?.error ?? "Unable to decrypt signal");
+      }
+      setDecryptedResults((prev) => ({
+        ...prev,
+        [key]: {
+          payload: data?.payload ?? null,
+          payloadWarning: data?.payloadWarning ?? null,
+          selectedApp: data?.selectedApp,
+          selectedAppName: data?.selectedAppName ?? null,
+        },
+      }));
+    } catch (e: any) {
+      setDecryptErrors((prev) => ({
+        ...prev,
+        [key]: e?.shortMessage ?? e?.message ?? "Unable to decrypt signal",
+      }));
+    } finally {
+      setDecrypting((prev) => ({ ...prev, [key]: false }));
+    }
+  }
+
+  async function fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    retries = 2,
+    delayMs = 700
+  ) {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= retries; attempt += 1) {
+      try {
+        return await fetch(url, init);
+      } catch (error) {
+        lastError = error;
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Network request failed");
   }
 
   async function subscribe() {
-    if (!account?.address || !traderProfileId) {
-      setSubError('Wallet non connecté ou TraderProfile inconnu');
+    if (!isConnected || !address) {
+      setSubError("Connect your wallet first");
       return;
     }
+    if (!isCorrectNetwork) {
+      setSubError("Switch to Arbitrum network first");
+      return;
+    }
+    if (!season || season.status !== 0) {
+      setSubError("No open season available for this trader");
+      return;
+    }
+    if (!SHINGO_HUB_ADDRESS) {
+      setSubError("Missing NEXT_PUBLIC_SHINGO_HUB_ADDRESS");
+      return;
+    }
+
     setSubscribing(true);
     setSubError(null);
     setSubSuccess(null);
+
     try {
-      const priceMist = BigInt(Math.floor(parseFloat(priceSui || '0') * 1_000_000_000));
-      const expiresMs = BigInt(Date.now() + Number(expiryDays || '30') * 24 * 3600 * 1000);
-      const coins = await client.getCoins({ owner: account.address, coinType: '0x2::sui::SUI', limit: 20 });
-      const coin = coins.data.find((c) => BigInt(c.balance) >= priceMist + BigInt(1_000_000)); // marge gas
-      if (!coin) {
-        throw new Error('Pas de coin SUI suffisant pour payer');
+      await switchToTargetNetwork();
+      const hub = await getWriteHubContract();
+      const token = await getWriteTokenContract();
+
+      const allowance = (await token.allowance(address, SHINGO_HUB_ADDRESS)) as bigint;
+      const feeOverrides = await getWriteFeeOverrides();
+      if (allowance < season.priceToken) {
+        const approveTx = await token.approve(
+          SHINGO_HUB_ADDRESS,
+          season.priceToken,
+          feeOverrides
+        );
+        await approveTx.wait();
       }
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${SUI_PACKAGE_ID}::subscription::mint_subscription_public_profile`,
-        arguments: [
-          tx.object(traderProfileId),
-          tx.pure.address(account.address),
-          tx.pure.u64(expiresMs),
-          tx.object('0x6'), // Clock
-          tx.object(coin.coinObjectId),
-        ],
-      });
-      const res = await signAndExecute({
-        transaction: tx,
-        options: { showEffects: true },
-      });
-      setSubSuccess(`Tx: ${res.digest}`);
+
+      const tx = await hub.subscribe(season.id, feeOverrides);
+      await tx.wait();
+      try {
+        const syncResp = await fetchWithRetry(
+          `${backendUrl}/tee/grant-subscriber`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              seasonId: season.id.toString(),
+              subscriber: address,
+            }),
+          },
+          2,
+          500
+        );
+        if (!syncResp.ok) {
+          // Non-blocking: on-chain-first relay catches up from events.
+          setSubSuccess(
+            `Subscription confirmed on-chain: ${tx.hash}. TEE access sync will be caught up by relay.`
+          );
+        } else {
+          setSubSuccess(`Subscription confirmed: ${tx.hash}`);
+        }
+      } catch {
+        // Non-blocking: on-chain-first relay catches up from events.
+        setSubSuccess(
+          `Subscription confirmed on-chain: ${tx.hash}. TEE access sync will be caught up by relay.`
+        );
+      }
     } catch (e: any) {
-      setSubError(e?.message ?? 'Erreur subscription');
+      const message = e?.shortMessage ?? e?.message ?? "Subscription failed";
+      if (String(message).toLowerCase().includes("failed to fetch")) {
+        setSubError(
+          `TEE backend unreachable at ${backendUrl}. Wait a few seconds and retry (API may still be starting).`
+        );
+      } else {
+        setSubError(message);
+      }
     } finally {
       setSubscribing(false);
     }
   }
 
-  // Helpers pour lire les objets Sui
-  function readField<T>(obj: any, path: string[]): T | undefined {
-    const content: any = obj.data?.content;
-    if (!content || content.dataType !== 'moveObject') return undefined;
-    let cursor: any = content.fields;
-    for (const p of path) cursor = cursor?.[p];
-    return cursor as T | undefined;
-  }
-  function decodeWalrusUri(bytes: number[]): string {
-    try {
-      return new TextDecoder().decode(new Uint8Array(bytes));
-    } catch {
-      return '';
-    }
-  }
-
-  // Chargement des signaux désactivé pour éviter les pop-ups de signature dès l'ouverture du profil.
-  // On réactivera sur action explicite (bouton) si besoin.
+  const displayName =
+    trader?.pseudo?.trim() && trader.pseudo !== trader.wallet
+      ? trader.pseudo
+      : shortenAddress(trader?.wallet ?? wallet ?? "", 10, 8);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      
-      {/* Nav */}
-      <div className="flex items-center justify-between mb-8">
-         <button 
-            onClick={() => onNavigate(Views.MARKETPLACE)} 
-            className="group flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-mono uppercase"
-         >
-            <div className="p-1 rounded border border-white/10 group-hover:border-white/30"><ArrowLeft className="w-3 h-3" /></div>
-            Back to Marketplace
-         </button>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pb-20 pt-10 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between gap-3">
+        <Button
+          variant="ghost"
+          className="w-fit px-2 text-slate-300"
+          onClick={() => onNavigate(Views.MARKETPLACE)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to marketplace
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Col: Identity & Sub */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="p-0 overflow-hidden">
-             {/* Cover */}
-             <div className={`h-24 relative ${trader.pnl30d > 0 ? 'bg-gradient-to-r from-cyan-900/20 to-emerald-900/20' : 'bg-gradient-to-r from-red-900/20 to-orange-900/20'}`}>
-                <div className="absolute inset-0 bg-grid-pattern opacity-50"></div>
-             </div>
-             
-             <div className="px-6 pb-6 -mt-10">
-                <div className="w-20 h-20 bg-black rounded-xl overflow-hidden border-2 border-white/10 mb-4 shadow-2xl">
-                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                   <img src={trader.avatar} className="w-full h-full object-cover opacity-90" alt="Avatar"/>
-                </div>
-                
-                <div className="flex justify-between items-start mb-4">
-                   <div>
-                     <h1 className="text-2xl font-display font-bold text-white tracking-tight">{trader.handle}</h1>
-                     <div className="flex items-center gap-2 mt-1 text-cyan-400 text-xs font-mono uppercase tracking-wider">
-                       {trader.isVerified && <><ShieldCheck className="w-3 h-3" /> Verified Strategy</>}
-                     </div>
-                   </div>
-                </div>
+      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="glass-panel overflow-hidden border-white/10">
+          <div className="h-24 bg-mesh-gradient" />
+          <CardContent className="space-y-6 p-6">
+            <WalletAvatar
+              address={trader?.wallet ?? wallet}
+              size={96}
+              className="-mt-14 border-4 border-slate-900"
+            />
 
-                <div className="text-slate-500 text-xs font-mono uppercase tracking-wider mb-6">
-                  Profil on-chain – données détaillées à venir
-                </div>
+            <div className="space-y-2">
+              <h1
+                className="max-w-full break-all font-display text-2xl font-semibold text-white sm:text-3xl"
+                title={displayName}
+              >
+                {displayName}
+              </h1>
+              <p className="max-w-full break-all font-mono text-xs text-slate-400">
+                {trader?.wallet ? shortenAddress(trader.wallet, 10, 8) : "Unknown wallet"}
+              </p>
+              <Badge className="gap-1 border-red-400/30 bg-red-500/10 text-red-100">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                On-chain strategy profile
+              </Badge>
+              <p className="text-sm text-slate-300">
+                Subscribe to the current season to access encrypted signals.
+              </p>
+            </div>
 
-                <div className="bg-white/5 rounded-xl border border-white/5 p-4 mb-6">
-                   <div className="flex justify-between items-center mb-4">
-                      <span className="text-sm font-bold text-white">Monthly Access</span>
-                      <span className="text-lg font-mono text-cyan-400 font-bold">{priceSui || '1'} SUI</span>
-                   </div>
+            <Separator />
 
-                   <div className="grid grid-cols-2 gap-3 mb-3">
-                     <div>
-                       <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Price (SUI, on-chain)</label>
-                       <input
-                         value={loadingPrice ? '...' : priceSui}
-                         readOnly
-                         className="w-full bg-black border border-white/10 rounded px-3 py-2 text-sm text-white font-mono opacity-70"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Expiry (days)</label>
-                       <input
-                         value={expiryDays}
-                         onChange={(e) => setExpiryDays(e.target.value)}
-                         className="w-full bg-black border border-white/10 rounded px-3 py-2 text-sm text-white font-mono"
-                       />
-                     </div>
-                   </div>
-
-                   {subError && <div className="text-red-400 text-xs font-mono mb-2">{subError}</div>}
-                   {subSuccess && <div className="text-emerald-400 text-xs font-mono mb-2">{subSuccess}</div>}
-
-                   <Button
-                     fullWidth
-                     variant="primary"
-                     className="justify-between group mb-4"
-                     onClick={subscribe}
-                     disabled={subscribing || !account}
-                   >
-                      <span className="font-bold">{subscribing ? 'Subscribing...' : 'SUBSCRIBE NOW'}</span>
-                      <ArrowLeft className="w-4 h-4 rotate-180" />
-                   </Button>
-                   <div className="flex justify-center gap-6 border-t border-white/10 pt-3 opacity-60">
-                      <div className="flex flex-col items-center gap-1" title="Real-time Signals">
-                         <Zap className="w-4 h-4 text-slate-300" />
-                      </div>
-                      <div className="flex flex-col items-center gap-1" title="JSON API">
-                         <FileJson className="w-4 h-4 text-slate-300" />
-                      </div>
-                      <div className="flex flex-col items-center gap-1" title="DEX Execution">
-                         <LayoutDashboard className="w-4 h-4 text-slate-300" />
-                      </div>
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <Button fullWidth variant="outline" size="sm" icon={<ExternalLink className="w-3 h-3"/>}>SCAN</Button>
-                    <Button fullWidth variant="outline" size="sm" icon={<Share2 className="w-3 h-3"/>}>SHARE</Button>
-                </div>
-             </div>
-          </Card>
-
-        </div>
-
-        {/* Right Col: on-chain reminders */}
-        <div className="lg:col-span-8 space-y-6">
-          <Card className="p-8 border border-white/10 bg-white/5">
-            <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest mb-4">Performance mock (courbe)</h3>
-            <div className="space-y-3">
-              <div className="flex gap-4 text-xs font-mono text-slate-400">
-                <span>Winrate: <span className="text-emerald-400">{mockStats.winrate}%</span></span>
-                <span>Avg PnL: <span className={mockStats.avgPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{mockStats.avgPnl}%</span></span>
-                <span>Equity finale: <span className="text-cyan-400">{mockStats.equity.slice(-1)[0] ?? 1}x</span></span>
+            <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <div className="flex items-end justify-between">
+                <span className="text-sm text-slate-300">Current season price</span>
+                <span className="font-mono text-2xl text-red-100">{priceDisplay}</span>
               </div>
-              {/* Courbe lissée + zone, inspirée du rendu mock initial */}
-              <div className="relative w-full h-32">
-                <svg viewBox="0 0 260 120" className="absolute inset-0">
-                  <defs>
-                    <linearGradient id="gradEquity" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.5" />
-                      <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <rect x="0" y="0" width="260" height="120" fill="url(#gradEquity)" opacity="0.05" />
-                  <path
-                    d={`${buildSmoothPath(mockStats.equity, 260, 120)} L 260 120 L 0 120 Z`}
-                    fill="url(#gradEquity)"
-                    opacity="0.4"
-                  />
-                  <path
-                    d={buildSmoothPath(mockStats.equity, 260, 120)}
-                    fill="none"
-                    stroke="#22d3ee"
-                    strokeWidth="2"
-                  />
-                  {mockStats.equity.map((v, i) => {
-                    const x = (i / Math.max(mockStats.equity.length - 1, 1)) * 260;
-                    const max = Math.max(...mockStats.equity, 1);
-                    const y = 120 - (v / max) * 100;
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Season</p>
+                  <p className="font-mono text-sm text-white">
+                    {season ? `#${season.id.toString()}` : "none"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Status</p>
+                  <p className="font-mono text-sm text-white">
+                    {season?.status === 0 ? "OPEN" : "CLOSED"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Signals</p>
+                  <p className="font-mono text-sm text-white">{season?.signalCount.toString() ?? "0"}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Subscribers</p>
+                  <p className="font-mono text-sm text-white">{season?.subscribers ?? 0}</p>
+                </div>
+              </div>
+
+              {loading && <Badge className="w-fit">Loading profile...</Badge>}
+              {subError && <Badge variant="destructive">{subError}</Badge>}
+              {subSuccess && (
+                <Badge className="whitespace-normal break-all border-emerald-300/30 bg-emerald-400/10 text-emerald-100">
+                  {subSuccess}
+                </Badge>
+              )}
+
+              <Button
+                className="w-full bg-red-600 text-white hover:bg-red-500"
+                onClick={subscribe}
+                disabled={subscribing || !isConnected || !season || season.status !== 0}
+              >
+                {subscribing ? "Subscribing..." : `Subscribe with ${PAYMENT_TOKEN_SYMBOL}`}
+              </Button>
+
+              <p className="text-[11px] text-slate-400">
+                Approval is done only if required. Amount uses {PAYMENT_TOKEN_DECIMALS} token decimals.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" className="border-white/15 bg-slate-950/70">
+                <ExternalLink className="h-4 w-4" />
+                Arbiscan
+              </Button>
+              <Button variant="outline" className="border-white/15 bg-slate-950/70">
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="glass-panel border-white/10">
+            <CardHeader>
+              <CardTitle className="font-display text-xl text-white">Public history</CardTitle>
+              <CardDescription>
+                Real on-chain signals from closed seasons. Public signals can be decrypted without a connected wallet.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {historyError && <Badge variant="destructive">{historyError}</Badge>}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Season</TableHead>
+                    <TableHead>Signal</TableHead>
+                    <TableHead>Published</TableHead>
+                    <TableHead>protectedDataAddr</TableHead>
+                    <TableHead>Decrypt</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {publicHistory.map((row) => {
+                    const key = historyKey(row);
                     return (
-                      <circle key={i} cx={x} cy={y} r={2.5} fill="#22d3ee" opacity="0.8" />
+                      <React.Fragment key={key}>
+                        <TableRow>
+                          <TableCell className="font-mono text-xs text-slate-300">#{row.seasonId.toString()}</TableCell>
+                          <TableCell className="font-mono text-xs text-slate-300">#{row.signalId.toString()}</TableCell>
+                          <TableCell className="font-mono text-xs text-slate-300">{formatTimestamp(row.publishedAt)}</TableCell>
+                          <TableCell className="max-w-[240px] break-all font-mono text-xs text-slate-300">
+                            {row.protectedDataAddr}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-white/15 bg-slate-950/70"
+                              onClick={() => decryptPublicSignal(row)}
+                              disabled={decrypting[key]}
+                            >
+                              {decrypting[key] ? "Decrypting..." : "Decrypt"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {(decryptErrors[key] || decryptedResults[key]) && (
+                          <TableRow>
+                            <TableCell colSpan={5}>
+                              <div className="space-y-2 rounded-md border border-white/10 bg-slate-950/60 p-3">
+                                {decryptErrors[key] && (
+                                  <Badge variant="destructive">{decryptErrors[key]}</Badge>
+                                )}
+                                {decryptedResults[key]?.selectedApp && (
+                                  <p className="text-[11px] text-slate-400">
+                                    app: {decryptedResults[key]?.selectedAppName ? `${decryptedResults[key]?.selectedAppName} ` : ""}
+                                    <span className="font-mono">{decryptedResults[key]?.selectedApp}</span>
+                                  </p>
+                                )}
+                                {decryptedResults[key]?.payloadWarning && (
+                                  <Badge variant="destructive">{decryptedResults[key]?.payloadWarning}</Badge>
+                                )}
+                                {decryptedResults[key] && renderDecryptedPayload(decryptedResults[key]?.payload)}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     );
                   })}
-                </svg>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-8 border border-white/10 bg-white/5">
-            <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest mb-3">Données réelles</h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Seules les informations on-chain sont affichées pour l’instant : adresse du trader, formulaire de souscription.
-              Les métriques de performance, l’historique des signaux et les stats agrégées seront affichés quand le backend
-              (indexation + DB) sera branché.
-            </p>
-          </Card>
-
-          <Card className="p-8 border border-white/10 bg-white/5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-mono text-slate-400 uppercase tracking-widest">Historique public (mock)</h3>
-              <div className="flex gap-3 text-xs font-mono text-slate-400">
-                <span>Winrate: <span className="text-emerald-400">{mockStats.winrate}%</span></span>
-                <span>Avg PnL: <span className={mockStats.avgPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{mockStats.avgPnl}%</span></span>
-                <span>Equity: <span className="text-cyan-400">{mockStats.equity.slice(-1)[0] ?? 1}x</span></span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
-                <div className="text-[10px] text-slate-500 uppercase font-bold">Trades</div>
-                <div className="text-xl font-mono text-white">{MOCK_HISTORY.length}</div>
-              </div>
-              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
-                <div className="text-[10px] text-slate-500 uppercase font-bold">Winrate</div>
-                <div className="text-xl font-mono text-emerald-400">{mockStats.winrate}%</div>
-              </div>
-              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
-                <div className="text-[10px] text-slate-500 uppercase font-bold">Best trade</div>
-                <div className="text-xl font-mono text-emerald-400">{mockStats.best}%</div>
-              </div>
-              <div className="bg-black/40 border border-white/10 rounded-lg p-3">
-                <div className="text-[10px] text-slate-500 uppercase font-bold">Worst trade</div>
-                <div className="text-xl font-mono text-red-400">{mockStats.worst}%</div>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-xs font-mono text-slate-300">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-500 uppercase">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Pair</th>
-                    <th className="py-2 pr-3">Side</th>
-                    <th className="py-2 pr-3">Entry</th>
-                    <th className="py-2 pr-3">Exit</th>
-                    <th className="py-2 pr-3">PnL %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_HISTORY.map((t) => (
-                    <tr key={`${t.date}-${t.market}-${t.entry}`} className="border-b border-white/5">
-                      <td className="py-2 pr-3">{t.date}</td>
-                      <td className="py-2 pr-3">{t.market}</td>
-                      <td className="py-2 pr-3">{t.side}</td>
-                      <td className="py-2 pr-3">{t.entry}</td>
-                      <td className="py-2 pr-3">{t.exit}</td>
-                      <td className={`py-2 pr-3 ${t.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{t.pnl}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  {publicHistory.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-sm text-slate-400">
+                        No public signals yet. Close a season to make its signals public here.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
           </Card>
         </div>
       </div>

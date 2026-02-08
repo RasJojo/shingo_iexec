@@ -1,0 +1,13 @@
+{
+  "name": "shingo-tee-app",
+  "version": "0.0.1",
+  "description": "Shingo pass-through TEE app for iExec DataProtector",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "test:local": "iapp test --protectedData default"
+  },
+  "dependencies": {
+    "@iexec/dataprotector-deserializer": "^0.1.1"
+  }
+}

@@ -1,113 +1,117 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 237, 237, 237;
+@layer base {
+  :root {
+    --background: 232 38% 6%;
+    --foreground: 210 40% 98%;
+    --card: 227 34% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 227 34% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 0 75% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 225 26% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 225 20% 20%;
+    --muted-foreground: 215 20% 67%;
+    --accent: 0 65% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 223 24% 23%;
+    --input: 223 24% 23%;
+    --ring: 0 75% 39%;
+    --chart-1: 0 75% 39%;
+    --chart-2: 0 65% 50%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 35 92% 62%;
+    --chart-5: 0 84% 67%;
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 232 38% 6%;
+    --foreground: 210 40% 98%;
+    --card: 227 34% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 227 34% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 0 75% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 225 26% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 225 20% 20%;
+    --muted-foreground: 215 20% 67%;
+    --accent: 0 65% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 223 24% 23%;
+    --input: 223 24% 23%;
+    --ring: 0 75% 39%;
+    --chart-1: 0 75% 39%;
+    --chart-2: 0 65% 50%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 35 92% 62%;
+    --chart-5: 0 84% 67%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(50% 50% at 15% 10%, rgba(174, 27, 27, 0.18), transparent 70%),
+      radial-gradient(40% 35% at 85% 5%, rgba(212, 43, 43, 0.14), transparent 72%),
+      radial-gradient(35% 30% at 50% 100%, rgba(138, 21, 21, 0.12), transparent 70%),
+      linear-gradient(180deg, rgba(8, 10, 18, 0.92) 0%, rgba(4, 5, 10, 1) 100%);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(174, 27, 27, 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(2, 6, 23, 0.45);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(51, 65, 85, 0.8);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.95);
+  }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background-color: #000000;
-  overflow-x: hidden;
-}
+@layer utilities {
+  .bg-grid-soft {
+    background-image:
+      linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
 
-::selection {
-  background: #00F0FF;
-  color: #000;
-}
+  .mask-fade-bottom {
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  }
 
-/* Aurora Background Layer */
-.aurora-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  background: #000;
-  overflow: hidden;
-}
+  .glass-panel {
+    @apply border border-white/10 bg-slate-900/45 backdrop-blur-xl;
+  }
 
-.aurora-blob {
-  position: absolute;
-  filter: blur(80px);
-  opacity: 0.4;
-  animation: aurora 20s infinite alternate;
-  border-radius: 100%;
-}
-
-.blob-1 {
-  top: -10%;
-  left: -10%;
-  width: 50vw;
-  height: 50vh;
-  background: radial-gradient(circle, rgba(112, 0, 255, 0.15), transparent);
-}
-
-.blob-2 {
-  bottom: -10%;
-  right: -10%;
-  width: 60vw;
-  height: 60vh;
-  background: radial-gradient(circle, rgba(0, 240, 255, 0.1), transparent);
-  animation-delay: -5s;
-}
-
-.blob-3 {
-  top: 40%;
-  left: 40%;
-  width: 40vw;
-  height: 40vh;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.03), transparent);
-  animation-delay: -10s;
-}
-
-/* Grid Pattern Definition */
-.bg-grid-pattern {
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  pointer-events: none;
-}
-
-/* Fixed Full Screen Grid */
-.bg-grid-fixed {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 100%);
-  pointer-events: none;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #000;
-}
-::-webkit-scrollbar-thumb {
-  background: #222;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #00F0FF;
-}
-
-/* Text Glows */
-.text-glow {
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-}
-.text-glow-cyan {
-  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
-}
-.text-glow-violet {
-  text-shadow: 0 0 20px rgba(112, 0, 255, 0.5);
+  .text-gradient {
+    @apply bg-gradient-to-r from-red-400 via-red-300 to-orange-300 bg-clip-text text-transparent;
+  }
 }

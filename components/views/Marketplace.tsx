@@ -1,196 +1,315 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Views } from '@/types';
-import { Card, Badge, SectionHeader } from '@/components/ui';
-import { Search, ArrowUpRight } from 'lucide-react';
-import { useSuiClient } from '@mysten/dapp-kit';
-import { SUI_PACKAGE_ID } from '@/lib/sui';
+import React, { useEffect, useMemo, useState } from "react";
+import { Views } from "@/types";
+import { ArrowUpRight, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { WalletAvatar } from "@/components/ui/wallet-avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { shortenAddress } from "@/lib/utils";
+import {
+  SeasonView,
+  TraderView,
+  formatToken,
+  getSeasonSubscribersSafe,
+  getPublicProvider,
+  getReadHubContract,
+} from "@/lib/evm/contracts";
+import {
+  LOG_LOOKBACK_BLOCKS,
+  SHINGO_DEPLOY_BLOCK,
+  SHINGO_HUB_ADDRESS,
+  PAYMENT_TOKEN_SYMBOL,
+} from "@/lib/evm/config";
 
-export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => void }> = ({ onNavigate }) => {
-  const [filterRisk, setFilterRisk] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [traders, setTraders] = useState<any[]>([]);
+const RISK_OPTIONS = ["Open season", "Closed season"] as const;
+
+type TraderCard = {
+  id: string;
+  pseudo: string;
+  wallet: string;
+  currentSeasonId: number;
+  statusLabel: "Open season" | "Closed season";
+  subscriptionPrice: string;
+  subscribers: number;
+  signalCount: number;
+  description: string;
+};
+
+function toTraderView(raw: any): TraderView {
+  return {
+    pseudo: raw.pseudo,
+    wallet: raw.wallet,
+    currentSeasonId: BigInt(raw.currentSeasonId),
+    active: Boolean(raw.active),
+    registeredAt: BigInt(raw.registeredAt),
+  };
+}
+
+function toSeasonView(raw: any): SeasonView {
+  return {
+    id: BigInt(raw.id),
+    trader: raw.trader,
+    priceToken: BigInt(raw.priceToken),
+    collectionId: raw.collectionId,
+    status: Number(raw.status),
+    openedAt: BigInt(raw.openedAt),
+    closedAt: BigInt(raw.closedAt),
+    signalCount: BigInt(raw.signalCount),
+  };
+}
+
+export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => void }> = ({
+  onNavigate,
+}) => {
+  const [filterState, setFilterState] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [traders, setTraders] = useState<TraderCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const client = useSuiClient();
 
   useEffect(() => {
     async function load() {
+      if (!SHINGO_HUB_ADDRESS) {
+        setError("Missing NEXT_PUBLIC_SHINGO_HUB_ADDRESS");
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
-        const ev = await client.queryEvents({
-          query: { MoveEventType: `${SUI_PACKAGE_ID}::types::TraderProfileCreated` },
-          limit: 100,
-        });
-        const uniq: Record<string, boolean> = {};
-        const raw =
-          ev.data
-            ?.map((e) => {
-              const traderAddr = (e.parsedJson as any)?.trader as string | undefined;
-              const profileId = (e.parsedJson as any)?.profile_id as string | undefined;
-              if (!traderAddr || !profileId || uniq[profileId]) return null;
-              uniq[profileId] = true;
-              return { traderAddr, profileId };
-            })
-            .filter(Boolean) as { traderAddr: string; profileId: string }[] || [];
+        const provider = getPublicProvider();
+        const hub = getReadHubContract();
+        const latestBlock = await provider.getBlockNumber();
+        const fromBlock =
+          SHINGO_DEPLOY_BLOCK > 0
+            ? SHINGO_DEPLOY_BLOCK
+            : Math.max(0, latestBlock - LOG_LOOKBACK_BLOCKS);
+        const logs = await hub.queryFilter(
+          hub.filters.TraderRegistered(),
+          fromBlock,
+          latestBlock
+        );
+        const uniqueWallets = [...new Set(logs.map((log: any) => String(log.args?.trader ?? "")))].filter(
+          Boolean
+        );
 
-        const mapped = await Promise.all(
-          raw.map(async ({ traderAddr, profileId }) => {
+        const rows = await Promise.all(
+          uniqueWallets.map(async (wallet) => {
             try {
-              const obj = await client.getObject({ id: profileId, options: { showContent: true } });
-              const fields: any = (obj as any).data?.content?.fields;
-              const priceMist = fields?.price_mist ? Number(fields.price_mist) : 0;
+              const trader = toTraderView(await hub.getTrader(wallet));
+              let season: SeasonView | null = null;
+              let subscriberCount = 0;
+
+              if (trader.currentSeasonId > 0n) {
+                season = toSeasonView(await hub.getSeason(trader.currentSeasonId));
+                const subscribers = await getSeasonSubscribersSafe(hub, trader.currentSeasonId);
+                subscriberCount = subscribers.length;
+              }
+
+              const statusOpen = season?.status === 0;
               return {
-                id: profileId,
-                handle: traderAddr,
-                profileId,
-                avatar: `https://api.dicebear.com/7.x/shapes/svg?seed=${traderAddr}`,
-                pnl30d: 0,
-                pnlTotal: 0,
-                winRate: 0,
-                drawdown: 0,
-                subscribers: 0,
-                riskLevel: 'N/A',
-                strategyTags: [],
-                description: 'Trader profile on-chain',
-                subscriptionPrice: priceMist / 1_000_000_000,
-                assets: [],
-                isVerified: true,
-              };
+                id: wallet,
+                pseudo: trader.pseudo || shortenAddress(wallet, 8, 6),
+                wallet,
+                currentSeasonId: Number(trader.currentSeasonId),
+                statusLabel: statusOpen ? "Open season" : "Closed season",
+                subscriptionPrice: season ? formatToken(season.priceToken) : "0",
+                subscribers: subscriberCount,
+                signalCount: season ? Number(season.signalCount) : 0,
+                description: statusOpen
+                  ? `Current season is open for subscriptions`
+                  : "No active season right now",
+              } as TraderCard;
             } catch {
               return null;
             }
           })
         );
-        setTraders(mapped.filter(Boolean) as any[]);
+
+        setTraders(rows.filter(Boolean) as TraderCard[]);
       } catch (e: any) {
-        setError(e?.message ?? 'Erreur lors du chargement on-chain');
+        setError(e?.shortMessage ?? e?.message ?? "Failed to load on-chain traders");
       } finally {
         setLoading(false);
       }
     }
+
     load();
-  }, [client]);
+  }, []);
 
   const filtered = useMemo(() => {
     return traders.filter((t) => {
-      if (filterRisk && t.riskLevel !== filterRisk) return false;
+      if (filterState && t.statusLabel !== filterState) return false;
       if (
         searchTerm &&
-        !t.handle.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !(t.strategyTags || []).some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
+        !t.pseudo.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !t.wallet.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
         return false;
+      }
       return true;
     });
-  }, [traders, filterRisk, searchTerm]);
+  }, [traders, filterState, searchTerm]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-      <SectionHeader title="Alpha Marketplace" subtitle="Discover and copy the most profitable verified strategies on Sui." />
-
-      <div className="sticky top-28 z-30 bg-black/80 backdrop-blur-xl border border-white/10 py-3 px-4 rounded-xl mb-10 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-2xl">
-        <div className="relative w-full lg:w-96 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-          <input
-            type="text"
-            placeholder="SEARCH PROTOCOLS..."
-            className="w-full bg-white/5 border border-white/10 rounded-lg text-white text-xs font-mono py-3 pl-10 pr-4 focus:border-cyan-500/50 focus:bg-white/10 outline-none transition-all uppercase tracking-wider placeholder:text-slate-700"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="w-full lg:w-auto overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-2 min-w-max">
-            {['Conservative', 'Balanced', 'Aggressive'].map((risk) => (
-              <button
-                key={risk}
-                onClick={() => setFilterRisk(filterRisk === risk ? null : risk)}
-                className={`px-4 py-2 rounded-lg text-xs font-mono border transition-all whitespace-nowrap ${
-                  filterRisk === risk
-                    ? 'bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.3)]'
-                    : 'bg-transparent border-white/10 text-slate-400 hover:border-white/30'
-                }`}
-              >
-                {risk}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pb-20 pt-10 sm:px-6 lg:px-8">
+      <div className="space-y-2">
+        <h2 className="font-display text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+          Alpha Marketplace
+        </h2>
+        <p className="max-w-2xl text-slate-300">
+          Discover active traders on Arbitrum and subscribe to the current season.
+        </p>
       </div>
 
-      {error && <div className="text-sm text-red-400 font-mono mb-4">{error}</div>}
-      {loading && <div className="text-sm text-slate-400 font-mono mb-4">Chargement on-chain…</div>}
+      <Card className="glass-panel border-white/10">
+        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search pseudo or wallet"
+              className="h-10 border-white/10 bg-slate-950/80 pl-9"
+            />
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="w-full md:w-56">
+            <Select
+              value={filterState ?? "all"}
+              onValueChange={(value) => setFilterState(value === "all" ? null : value)}
+            >
+              <SelectTrigger className="h-10 border-white/10 bg-slate-950/80">
+                <SelectValue placeholder="Season status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All traders</SelectItem>
+                {RISK_OPTIONS.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            variant="outline"
+            className="h-10 border-white/10 bg-slate-950/80"
+            onClick={() => {
+              setSearchTerm("");
+              setFilterState(null);
+            }}
+          >
+            Reset filters
+          </Button>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <Card className="border-rose-400/30 bg-rose-500/10">
+          <CardContent className="p-4 text-sm text-rose-200">{error}</CardContent>
+        </Card>
+      )}
+
+      {loading && (
+        <Card className="border-red-400/25 bg-red-500/10">
+          <CardContent className="p-4 text-sm text-red-100">Loading on-chain traders...</CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((trader) => (
           <Card
             key={trader.id}
-            hover
-            className="flex flex-col h-full group"
             onClick={() =>
               onNavigate(Views.PROFILE, {
                 traderId: trader.id,
-                traderAddr: trader.handle,
-                traderProfileId: trader.profileId ?? trader.id,
+                traderAddr: trader.wallet,
               })
             }
+            className="group cursor-pointer border-white/10 bg-slate-950/50 transition duration-300 hover:-translate-y-1 hover:border-red-400/40 hover:bg-slate-900/70"
           >
-            <div className="p-6 flex-1 flex flex-col relative">
-              <div className={`absolute top-0 left-0 w-full h-0.5 ${trader.pnl30d > 0 ? 'bg-emerald-500' : 'bg-red-500'} shadow-[0_0_10px_currentColor]`}></div>
-              <div className="flex justify-between items-start mb-6 mt-2">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-md bg-slate-800 border border-white/10 overflow-hidden relative">
-                    <img src={trader.avatar} alt={trader.handle} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold font-display text-white text-lg tracking-tight truncate">{trader.handle}</h3>
-                      {trader.isVerified && <div className="shrink-0 text-[8px] bg-cyan-500 text-black px-1 rounded font-bold">VERIFIED</div>}
-                    </div>
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {(trader.strategyTags || []).slice(0, 2).map((tag: string) => (
-                        <Badge key={tag} size="sm" variant="neutral">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+            <CardHeader className="space-y-4 pb-4">
+              <div className="flex items-start justify-between">
+                <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
+                  <WalletAvatar address={trader.wallet} size={44} />
+                  <div className="min-w-0">
+                    <CardTitle className="truncate font-display text-lg text-white" title={trader.pseudo}>
+                      {trader.pseudo}
+                    </CardTitle>
+                    <CardDescription className="truncate text-xs" title={trader.wallet}>
+                      {shortenAddress(trader.wallet, 8, 6)}
+                    </CardDescription>
                   </div>
                 </div>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-red-200" />
               </div>
 
-              <p className="text-xs font-mono text-slate-500 mb-8 line-clamp-2 leading-relaxed">{'// '}{trader.description}</p>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="border-red-400/30 bg-red-500/10 text-red-100">
+                  {trader.statusLabel}
+                </Badge>
+                <Badge variant="outline" className="border-white/15 text-slate-300">
+                  season #{trader.currentSeasonId || "-"}
+                </Badge>
+              </div>
+            </CardHeader>
 
-              <div className="grid grid-cols-3 gap-4 mb-8 bg-white/5 rounded-lg p-4 border border-white/5">
-                <div>
-                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">30d PnL</div>
-                  <div className={`font-mono font-bold text-sm ${trader.pnl30d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{trader.pnl30d > 0 ? '+' : ''}{trader.pnl30d}%</div>
+            <CardContent className="space-y-4 pt-0">
+              <p className="line-clamp-2 text-sm text-slate-300">{trader.description}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-2">
+                  <p className="font-mono text-[10px] uppercase text-slate-500">Signals</p>
+                  <p className="text-slate-200">{trader.signalCount}</p>
                 </div>
-                <div>
-                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Max DD</div>
-                  <div className="font-mono font-bold text-sm text-slate-300">-{trader.drawdown}%</div>
-                </div>
-                <div>
-                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Subs</div>
-                  <div className="font-mono font-bold text-sm text-white">{trader.subscribers}</div>
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-2">
+                  <p className="font-mono text-[10px] uppercase text-slate-500">Subs</p>
+                  <p className="text-slate-200">{trader.subscribers}</p>
                 </div>
               </div>
 
-              <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
-                <div className="text-xs font-mono text-slate-400">
-                  <span className="text-white font-bold text-sm">{trader.subscriptionPrice} SUI</span> / mo
+              <div className="flex items-end justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase text-slate-500">Season price</p>
+                  <p
+                    className="truncate font-mono text-lg text-red-100"
+                    title={`${trader.subscriptionPrice} ${PAYMENT_TOKEN_SYMBOL}`}
+                  >
+                    {Number(trader.subscriptionPrice).toFixed(2)} {PAYMENT_TOKEN_SYMBOL}
+                  </p>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-cyan-400 group-hover:text-black transition-colors">
-                  <ArrowUpRight className="w-4 h-4" />
-                </div>
+                <Badge variant="outline" className="border-red-400/30 text-red-200">
+                  Open profile
+                </Badge>
               </div>
-            </div>
+            </CardContent>
           </Card>
         ))}
-        {filtered.length === 0 && !loading && <div className="text-slate-500 text-sm font-mono">Aucun trader on-chain détecté. Enregistrez-vous via Creator Studio.</div>}
+
+        {filtered.length === 0 && !loading && (
+          <Card className="border-white/10 bg-slate-950/60 md:col-span-2 xl:col-span-3">
+            <CardContent className="p-8 text-center text-sm text-slate-400">
+              No trader found with current filters.
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

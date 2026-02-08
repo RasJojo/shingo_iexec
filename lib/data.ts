@@ -4,7 +4,7 @@ export const TRADERS: Trader[] = [
   {
     id: '1',
     handle: 'Sui_Whale_V2',
-    avatar: 'https://picsum.photos/seed/1/200',
+    avatar: '0x9f72d5a382f19c3f8485a6e2d75f9b10c172af5f',
     pnl30d: 142.5,
     pnlTotal: 842.5,
     winRate: 72,
@@ -20,7 +20,7 @@ export const TRADERS: Trader[] = [
   {
     id: '2',
     handle: 'Navx_Bot_Alpha',
-    avatar: 'https://picsum.photos/seed/2/200',
+    avatar: '0x7c14ad3c0b9ed871a2203abbe0f6f10ca831d290',
     pnl30d: 312.2,
     pnlTotal: 1250.0,
     winRate: 65,
@@ -36,7 +36,7 @@ export const TRADERS: Trader[] = [
   {
     id: '3',
     handle: 'Stable_Farmer',
-    avatar: 'https://picsum.photos/seed/3/200',
+    avatar: '0xd2f1843ab20bc9e6407c31ed147f57f8ea10c662',
     pnl30d: 12.4,
     pnlTotal: 45.2,
     winRate: 95,
@@ -51,7 +51,7 @@ export const TRADERS: Trader[] = [
   {
     id: '4',
     handle: 'Meme_Hunter',
-    avatar: 'https://picsum.photos/seed/4/200',
+    avatar: '0xa9124f07de39c75108b64ce41fac216cbf91080d',
     pnl30d: -4.5,
     pnlTotal: 210.0,
     winRate: 40,
