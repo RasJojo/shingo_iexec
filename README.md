@@ -180,41 +180,6 @@ npm run e2e:onchain-tee
 - Backend is deployed privately (URL intentionally omitted).
 - Backend service must run with a valid Node path and loaded env values.
 
-## Troubleshooting
-
-### `Missing SHINGO_HUB_ADDRESS` or `Missing RELAY_PRIVATE_KEY`
-
-- Ensure variables are present in `evm/.env` or `backend/.env`.
-- Restart backend process after env changes.
-
-### `Failed to grant access`
-
-- If access already exists, backend now treats it as non-fatal.
-- If still failing, verify:
-  - `IEXEC_TEE_APP`
-  - relay wallet ownership/authorization over the protected data
-  - RPC health
-
-### `No compatible iExec orderbook triplet found`
-
-- App order or workerpool order unavailable.
-- Retry later or switch to a known working TEE app for Arbitrum Sepolia.
-
-### `RPC 429 / Too Many Requests`
-
-- Use a dedicated Arbitrum Sepolia RPC endpoint.
-- Avoid public endpoint overload for production.
-
-### `TEE decrypt timeout`
-
-- Jobs can take time on testnet.
-- Retry once; check backend logs and orderbook conditions.
-
-## Security Model (Short)
-
-- On-chain decides who is subscribed and when a season is closed.
-- Backend enforces those on-chain checks before decrypt requests.
-- Plaintext signal details are processed in iExec TEE flow, not stored on-chain.
 
 ## Hackathon Assets
 
