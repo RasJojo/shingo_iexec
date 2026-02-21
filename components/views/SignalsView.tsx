@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Views } from "@/types";
 import { Copy, Eye, Lock } from "lucide-react";
+import { HyperliquidTradeSheet } from "@/components/ui/hyperliquid-trade-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -378,6 +379,14 @@ export const SignalsView: React.FC<{
                     {renderDecryptedPayload(decryptedResults[signalKey(signal)]?.payload)}
                   </div>
                 )}
+
+                {decryptedResults[signalKey(signal)]?.payload != null &&
+                  typeof decryptedResults[signalKey(signal)]?.payload === "object" ? (
+                  <HyperliquidTradeSheet
+                    payload={decryptedResults[signalKey(signal)]!.payload as Record<string, unknown>}
+                    signalId={signal.id.toString()}
+                  />
+                ) : null}
               </CardContent>
             </Card>
           ))}
