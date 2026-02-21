@@ -446,8 +446,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
             <div className="flex gap-2 rounded-md border border-amber-300/30 bg-amber-500/10 p-3 text-xs text-amber-100">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
               <span>
-                Les ordres Market s'exécutent immédiatement au meilleur prix
-                disponible. Le fill peut différer du prix d'entrée du signal.
+                Les ordres Market s&apos;exécutent immédiatement au meilleur prix
+                disponible. Le fill peut différer du prix d&apos;entrée du signal.
               </span>
             </div>
           )}
@@ -457,8 +457,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
             <div className="flex gap-2 rounded-md border border-rose-300/30 bg-rose-500/10 p-3 text-xs text-rose-100">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
               <span>
-                L'asset{" "}
-                <span className="font-mono font-bold">{baseAsset}</span> n'est
+                L&apos;asset{" "}
+                <span className="font-mono font-bold">{baseAsset}</span> n&apos;est
                 pas encore mappé vers un index Hyperliquid. Utilise le deep
                 link pour trader manuellement.
               </span>
