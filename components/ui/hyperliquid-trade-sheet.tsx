@@ -296,7 +296,11 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
   const assetIndex = HL_ASSET_INDEX[baseAsset] ?? null;
   const deepLink = buildDeepLink(market);
 
-  const size = entryPrice > 0 ? sizeUsd / entryPrice : 0;
+  // Taille customisable par l'utilisateur (initialisée avec la valeur du signal)
+  const [customSizeUsd, setCustomSizeUsd] = useState<string>(sizeUsd > 0 ? String(sizeUsd) : "");
+
+  const effectiveSizeUsd = Number(customSizeUsd) > 0 ? Number(customSizeUsd) : sizeUsd;
+  const size = entryPrice > 0 ? effectiveSizeUsd / entryPrice : 0;
   const rrRatio = computeRR(entryPrice, stopLoss, takeProfitPrice, isBuy);
   const slPct = entryPrice > 0 ? ((Math.abs(entryPrice - stopLoss) / entryPrice) * 100).toFixed(2) : "—";
   const tpPct = entryPrice > 0 ? ((Math.abs(takeProfitPrice - entryPrice) / entryPrice) * 100).toFixed(2) : "—";
@@ -414,7 +418,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
               { label: "Take Profit", value: `${formatPrice(takeProfitPrice)} (+${tpPct}%)`, mono: true, className: "text-emerald-300" },
               { label: "TP Size", value: `${takeProfitSize}%`, mono: false },
               { label: "Risk / Reward", value: rrRatio, mono: false },
-              { label: "Size USD", value: `$${formatPrice(sizeUsd)}`, mono: true },
+              { label: "Size USD", value: `$${formatPrice(effectiveSizeUsd)}`, mono: true },
               { label: "Size (asset)", value: `${size > 0 ? size.toFixed(6) : "—"} ${baseAsset}`, mono: true },
             ].map((row) => (
               <div key={row.label} className="rounded-md border border-white/10 bg-slate-900/80 p-2">
@@ -424,6 +428,38 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* Taille customisable */}
+          <div className="rounded-md border border-white/10 bg-slate-900/80 p-3 space-y-2">
+            <label className="text-[10px] uppercase tracking-wide text-slate-500 block">
+              Taille en USD{sizeUsd > 0 ? ` (signal : $${sizeUsd})` : ""}
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">$</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={customSizeUsd}
+                onChange={(e) => setCustomSizeUsd(e.target.value)}
+                placeholder={sizeUsd > 0 ? String(sizeUsd) : "ex: 10"}
+                className="flex-1 rounded-md border border-white/15 bg-slate-950/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              {sizeUsd > 0 && (
+                <button
+                  className="text-xs text-slate-400 hover:text-slate-200 underline whitespace-nowrap"
+                  onClick={() => setCustomSizeUsd(String(sizeUsd))}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            {size > 0 && (
+              <p className="text-[11px] text-slate-400 font-mono">
+                ≈ {size.toFixed(6)} {baseAsset}
+              </p>
+            )}
           </div>
 
           {/* Explication agent wallet */}
