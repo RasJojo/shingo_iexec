@@ -125,9 +125,13 @@ function actionHash(
  * Signe une action L1 Hyperliquid via EIP-712.
  * Le wallet signe un "phantom agent" (source + connectionId).
  * source = "b" pour testnet, "a" pour mainnet.
+ *
+ * On passe par eth_signTypedData_v4 directement (JSON-RPC brut) pour
+ * garantir la compatibilité avec MetaMask/Rabby quel que soit le provider.
  */
 async function signL1Action(
-  signer: ethers.Signer,
+  provider: ethers.BrowserProvider,
+  signerAddress: string,
   action: unknown,
   vaultAddress: string | null,
   nonce: number,
@@ -138,11 +142,32 @@ async function signL1Action(
     source: isMainnet ? "a" : "b",
     connectionId: hash,
   };
-  const rawSig = await (signer as any).signTypedData(
-    PHANTOM_DOMAIN,
-    AGENT_TYPES,
-    phantomAgent
-  );
+
+  // Payload EIP-712 complet pour eth_signTypedData_v4
+  const typedData = JSON.stringify({
+    domain: PHANTOM_DOMAIN,
+    types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+        { name: "verifyingContract", type: "address" },
+      ],
+      Agent: [
+        { name: "source", type: "string" },
+        { name: "connectionId", type: "bytes32" },
+      ],
+    },
+    primaryType: "Agent",
+    message: phantomAgent,
+  });
+
+  // eth_signTypedData_v4 — compatible MetaMask, Rabby, Frame
+  const rawSig = await provider.send("eth_signTypedData_v4", [
+    signerAddress.toLowerCase(),
+    typedData,
+  ]);
+
   const { r, s, v } = ethers.Signature.from(rawSig);
   return { r, s, v };
 }
@@ -250,7 +275,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
     try {
       const provider = new BrowserProvider(window.ethereum as any);
       const signer = await provider.getSigner();
-      const walletAddress = await signer.getAddress();
+      const walletAddress = (await signer.getAddress()).toLowerCase();
 
       const nonce = Date.now();
 
@@ -259,39 +284,45 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
       const sizeStr = floatToWire(size);
 
       // Construction de l'ordre au format wire HL
+      // L'ordre des clés est important pour le msgpack (a, b, p, s, r, t)
       const orderWire = {
-        a: assetIndex,        // asset index
-        b: isBuy,             // isBuy
-        p: priceStr,          // limitPx (string)
-        s: sizeStr,           // size (string)
-        r: false,             // reduceOnly
+        a: assetIndex,
+        b: isBuy,
+        p: priceStr,
+        s: sizeStr,
+        r: false,
         t: isMarket
           ? { market: { tif: "Ioc" } }
           : { limit: { tif: "Gtc" } },
       };
 
-      // Action à signer + envoyer
+      // Action identique entre signature et payload HTTP
       const action = {
         type: "order",
         orders: [orderWire],
         grouping: "na",
       };
 
-      // Signature L1 Hyperliquid (phantom agent EIP-712)
+      // vaultAddress = null → on trade pour soi-même (flag 0x00 dans le hash)
+      const vaultAddress = null;
+
+      // Signature L1 via eth_signTypedData_v4 (phantom agent EIP-712)
       // isMainnet = false → source = "b" (testnet)
       const sig = await signL1Action(
-        signer,
+        provider,
+        walletAddress,
         action,
-        null,          // pas de vault address : null → flag 0x00
+        vaultAddress,
         nonce,
-        false          // testnet
+        false  // testnet
       );
 
-      // Payload final vers l'API HL testnet
+      // Payload final — vaultAddress doit être explicitement inclus
       const hlPayload = {
         action,
         nonce,
         signature: sig,
+        vaultAddress,  // null explicite requis par l'API HL
       };
 
       const resp = await fetch(HL_TESTNET_API, {
