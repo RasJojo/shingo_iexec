@@ -154,21 +154,30 @@ async function signL1ActionWithAgent(
 
 /**
  * Signe approveAgent avec MetaMask (chainId Arbitrum Sepolia — pas de conflit).
+ *
+ * Portage exact du SDK Python sign_user_signed_action :
+ * - signatureChainId et hyperliquidChain sont injectés dans le message
+ * - Le même objet est signé ET envoyé à l'API (pas deux objets distincts)
  */
-async function approveAgent(
+async function signAndBuildApproveAgent(
   provider: BrowserProvider,
   signerAddress: string,
   agentAddress: string,
+  agentName: string,
   nonce: number,
   isMainnet: boolean
-): Promise<{ r: string; s: string; v: number }> {
-  const message = {
+): Promise<{ action: Record<string, unknown>; sig: { r: string; s: string; v: number } }> {
+  // Construit l'action — même objet utilisé pour la signature ET l'envoi API
+  const action: Record<string, unknown> = {
+    type: "approveAgent",
     hyperliquidChain: isMainnet ? "Mainnet" : "Testnet",
-    agentAddress,
-    agentName: "shingo",
+    signatureChainId: "0x66eee", // Arbitrum Sepolia hex — toujours 0x66eee (testnet et mainnet)
+    agentAddress: agentAddress.toLowerCase(),
+    agentName,
     nonce,
   };
 
+  // Message EIP-712 = l'action complète (avec signatureChainId et hyperliquidChain)
   const typedData = JSON.stringify({
     domain: APPROVE_AGENT_DOMAIN,
     types: {
@@ -186,7 +195,12 @@ async function approveAgent(
       ],
     },
     primaryType: "HyperliquidTransaction:ApproveAgent",
-    message,
+    message: {
+      hyperliquidChain: action.hyperliquidChain,
+      agentAddress: action.agentAddress,
+      agentName: action.agentName,
+      nonce: action.nonce,
+    },
   });
 
   const rawSig = await provider.send("eth_signTypedData_v4", [
@@ -194,7 +208,7 @@ async function approveAgent(
     typedData,
   ]);
   const { r, s, v } = ethers.Signature.from(rawSig);
-  return { r, s, v };
+  return { action, sig: { r, s, v } };
 }
 
 /**
@@ -304,15 +318,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
       const agent = loadOrCreateAgent();
       const nonce = Date.now();
 
-      const sig = await approveAgent(provider, address, agent.address, nonce, false);
-
-      const action = {
-        type: "approveAgent",
-        hyperliquidChain: "Testnet",
-        agentAddress: agent.address.toLowerCase(),
-        agentName: "shingo",
-        nonce,
-      };
+      const { action, sig } = await signAndBuildApproveAgent(provider, address, agent.address, "shingo", nonce, false);
 
       await sendToHL({ action, nonce, signature: sig, vaultAddress: null });
       setAgentApproved(true);

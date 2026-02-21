@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Views } from "@/types";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ export const ConnectWallet: React.FC<{
     disconnect,
     switchToTargetNetwork,
   } = useEvmWallet();
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isConnected) {
@@ -64,10 +65,31 @@ export const ConnectWallet: React.FC<{
             </Badge>
           )}
 
+          {connectError && (
+            <div className="rounded-md border border-rose-300/30 bg-rose-500/10 p-3 text-xs text-rose-100">
+              {connectError}
+              <p className="mt-1 text-rose-200/70">
+                Ouvre MetaMask manuellement, va dans Paramètres → Sites connectés et supprime ce domaine, puis réessaie.
+              </p>
+            </div>
+          )}
+
           {!isConnected ? (
             <Button
               className="w-full bg-red-600 text-white hover:bg-red-500"
-              onClick={() => connect()}
+              onClick={() => {
+                setConnectError(null);
+                connect().catch((e: any) => {
+                  const msg = e?.message ?? String(e);
+                  if (msg.includes("rejected") || msg.includes("denied") || e?.code === 4001) {
+                    setConnectError("Connexion refusée dans MetaMask. Clique sur \"Connect wallet\" dans la popup.");
+                  } else if (msg.includes("already pending")) {
+                    setConnectError("Une demande de connexion est déjà en attente. Ouvre MetaMask et accepte-la.");
+                  } else {
+                    setConnectError(msg);
+                  }
+                });
+              }}
               disabled={isConnecting || !hasProvider}
             >
               {isConnecting ? "Connecting..." : "Connect wallet"}
