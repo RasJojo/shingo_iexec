@@ -100,6 +100,20 @@ const HL_MIN_SIZE: Record<string, number> = {
   SUI: 1,
 };
 
+// Nombre de décimales autorisées pour la taille (szDecimals) — Hyperliquid testnet
+const HL_SZ_DECIMALS: Record<string, number> = {
+  SOL: 2,
+  BTC: 5,
+  ETH: 4,
+  MATIC: 1,
+  BNB: 3,
+  AVAX: 2,
+  OP: 1,
+  ARB: 1,
+  SUI: 1,
+  DOGE: 0,
+};
+
 // ─── Signing helpers ───────────────────────────────────────────────────────────
 
 function removeTrailingZeros(value: string): string {
@@ -127,6 +141,13 @@ function floatToWire(x: number): string {
   const rounded = x.toFixed(8);
   const normalized = rounded.replace(/\.?0+$/, "");
   return normalized === "-0" ? "0" : normalized;
+}
+
+function sizeToWire(x: number, szDecimals: number): string {
+  const factor = Math.pow(10, szDecimals);
+  const truncated = Math.floor(x * factor) / factor;
+  const str = truncated.toFixed(szDecimals).replace(/\.?0+$/, "");
+  return str === "-0" ? "0" : str;
 }
 
 /**
@@ -316,7 +337,9 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
   const [customSizeUsd, setCustomSizeUsd] = useState<string>(sizeUsd > 0 ? String(sizeUsd) : "");
 
   const effectiveSizeUsd = Number(customSizeUsd) > 0 ? Number(customSizeUsd) : sizeUsd;
-  const size = entryPrice > 0 ? effectiveSizeUsd / entryPrice : 0;
+  const szDecimals = HL_SZ_DECIMALS[baseAsset] ?? 4;
+  const rawSize = entryPrice > 0 ? effectiveSizeUsd / entryPrice : 0;
+  const size = rawSize > 0 ? Math.floor(rawSize * Math.pow(10, szDecimals)) / Math.pow(10, szDecimals) : 0;
   const minSize = HL_MIN_SIZE[baseAsset] ?? null;
   const minSizeUsd = minSize !== null && entryPrice > 0 ? minSize * entryPrice : null;
   const isBelowMinSize = minSize !== null && size > 0 && size < minSize;
@@ -373,7 +396,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
       const nonce = Date.now();
       const useMarket = isMarket || forceMarket;
       const priceStr = useMarket ? "0" : floatToWire(entryPrice);
-      const sizeStr = floatToWire(size);
+      const sizeStr = sizeToWire(size, szDecimals);
 
       const orderWire = {
         a: assetIndex,
