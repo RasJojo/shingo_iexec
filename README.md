@@ -2,7 +2,6 @@
 
 Private trading signals with on-chain subscriptions on Arbitrum Sepolia and confidential decryption via iExec TEE.
 
-Built for Hack4Privacy.
 
 ## Live
 
