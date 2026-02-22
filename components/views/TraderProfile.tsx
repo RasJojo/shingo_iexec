@@ -245,13 +245,13 @@ export const TraderProfile: React.FC<{
 
   function renderDecryptedPayload(payload: unknown) {
     if (!payload) {
-      return <p className="text-xs text-slate-400">No payload</p>;
+      return <p className="text-xs text-slate-500 dark:text-slate-400">No payload</p>;
     }
     if (typeof payload === "string") {
-      return <p className="break-all font-mono text-xs text-slate-200">{payload}</p>;
+      return <p className="break-all font-mono text-xs text-slate-700 dark:text-slate-200">{payload}</p>;
     }
     if (typeof payload !== "object") {
-      return <p className="break-all font-mono text-xs text-slate-200">{String(payload)}</p>;
+      return <p className="break-all font-mono text-xs text-slate-700 dark:text-slate-200">{String(payload)}</p>;
     }
 
     const data = payload as Record<string, unknown>;
@@ -274,18 +274,18 @@ export const TraderProfile: React.FC<{
         {rows.length > 0 ? (
           <div className="grid gap-2 md:grid-cols-2">
             {rows.map((row) => (
-              <div key={row.label} className="rounded-md border border-white/10 bg-slate-900/80 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-slate-500">{row.label}</p>
-                <p className="break-all font-mono text-xs text-slate-100">{String(row.value)}</p>
+              <div key={row.label} className="rounded-md border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80 p-2">
+                <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">{row.label}</p>
+                <p className="break-all font-mono text-xs text-slate-800 dark:text-slate-100">{String(row.value)}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-slate-400">No mapped fields found. Raw payload below.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">No mapped fields found. Raw payload below.</p>
         )}
-        <details className="rounded-md border border-white/10 bg-slate-900/70 p-2">
-          <summary className="cursor-pointer text-xs text-slate-300">Raw decrypted payload (JSON)</summary>
-          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-white/10 bg-slate-900/80 p-2 text-xs text-slate-100">
+        <details className="rounded-md border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-slate-100/70 dark:bg-slate-900/70 p-2">
+          <summary className="cursor-pointer text-xs text-slate-600 dark:text-slate-300">Raw decrypted payload (JSON)</summary>
+          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80 p-2 text-xs text-slate-100">
             {JSON.stringify(data, null, 2)}
           </pre>
         </details>
@@ -457,62 +457,62 @@ export const TraderProfile: React.FC<{
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card className="glass-panel overflow-hidden border-white/10">
+        <Card className="glass-panel overflow-hidden border-slate-200 dark:border-slate-200 dark:border-white/10">
           <div className="h-24 bg-mesh-gradient" />
           <CardContent className="space-y-6 p-6">
             <WalletAvatar
               address={trader?.wallet ?? wallet}
               size={96}
-              className="-mt-14 border-4 border-slate-900"
+              className="-mt-14 border-4 border-slate-100 dark:border-slate-900"
             />
 
             <div className="space-y-2">
               <h1
-                className="max-w-full break-all font-display text-2xl font-semibold text-white sm:text-3xl"
+                className="max-w-full break-all font-display text-2xl font-semibold text-slate-900 dark:text-white sm:text-3xl"
                 title={displayName}
               >
                 {displayName}
               </h1>
-              <p className="max-w-full break-all font-mono text-xs text-slate-400">
+              <p className="max-w-full break-all font-mono text-xs text-slate-500 dark:text-slate-400">
                 {trader?.wallet ? shortenAddress(trader.wallet, 10, 8) : "Unknown wallet"}
               </p>
               <Badge className="gap-1 border-red-400/30 bg-red-500/10 text-red-100">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 On-chain strategy profile
               </Badge>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 Subscribe to the current season to access encrypted signals.
               </p>
             </div>
 
             <Separator />
 
-            <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+            <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-4">
               <div className="flex items-end justify-between">
-                <span className="text-sm text-slate-300">Current season price</span>
+                <span className="text-sm text-slate-600 dark:text-slate-300">Current season price</span>
                 <span className="font-mono text-2xl text-red-100">{priceDisplay}</span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Season</p>
-                  <p className="font-mono text-sm text-white">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Season</p>
+                  <p className="font-mono text-sm text-slate-900 dark:text-white">
                     {season ? `#${season.id.toString()}` : "none"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Status</p>
-                  <p className="font-mono text-sm text-white">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Status</p>
+                  <p className="font-mono text-sm text-slate-900 dark:text-white">
                     {season?.status === 0 ? "OPEN" : "CLOSED"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Signals</p>
-                  <p className="font-mono text-sm text-white">{season?.signalCount.toString() ?? "0"}</p>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Signals</p>
+                  <p className="font-mono text-sm text-slate-900 dark:text-white">{season?.signalCount.toString() ?? "0"}</p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-slate-900/80 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Subscribers</p>
-                  <p className="font-mono text-sm text-white">{season?.subscribers ?? 0}</p>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Subscribers</p>
+                  <p className="font-mono text-sm text-slate-900 dark:text-white">{season?.subscribers ?? 0}</p>
                 </div>
               </div>
 
@@ -525,24 +525,24 @@ export const TraderProfile: React.FC<{
               )}
 
               <Button
-                className="w-full bg-red-600 text-white hover:bg-red-500"
+                className="w-full bg-red-600 text-slate-900 dark:text-white hover:bg-red-500"
                 onClick={subscribe}
                 disabled={subscribing || !isConnected || !season || season.status !== 0}
               >
                 {subscribing ? "Subscribing..." : `Subscribe with ${PAYMENT_TOKEN_SYMBOL}`}
               </Button>
 
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Approval is done only if required. Amount uses {PAYMENT_TOKEN_DECIMALS} token decimals.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="border-white/15 bg-slate-950/70">
+              <Button variant="outline" className="border-slate-300 dark:border-slate-300 dark:border-white/15 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70">
                 <ExternalLink className="h-4 w-4" />
                 Arbiscan
               </Button>
-              <Button variant="outline" className="border-white/15 bg-slate-950/70">
+              <Button variant="outline" className="border-slate-300 dark:border-slate-300 dark:border-white/15 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70">
                 <Share2 className="h-4 w-4" />
                 Share
               </Button>
@@ -551,9 +551,9 @@ export const TraderProfile: React.FC<{
         </Card>
 
         <div className="space-y-6">
-          <Card className="glass-panel border-white/10">
+          <Card className="glass-panel border-slate-200 dark:border-slate-200 dark:border-white/10">
             <CardHeader>
-              <CardTitle className="font-display text-xl text-white">Public history</CardTitle>
+              <CardTitle className="font-display text-xl text-slate-900 dark:text-white">Public history</CardTitle>
               <CardDescription>
                 Real on-chain signals from closed seasons. Public signals can be decrypted without a connected wallet.
               </CardDescription>
@@ -576,17 +576,17 @@ export const TraderProfile: React.FC<{
                     return (
                       <React.Fragment key={key}>
                         <TableRow>
-                          <TableCell className="font-mono text-xs text-slate-300">#{row.seasonId.toString()}</TableCell>
-                          <TableCell className="font-mono text-xs text-slate-300">#{row.signalId.toString()}</TableCell>
-                          <TableCell className="font-mono text-xs text-slate-300">{formatTimestamp(row.publishedAt)}</TableCell>
-                          <TableCell className="max-w-[240px] break-all font-mono text-xs text-slate-300">
+                          <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-300">#{row.seasonId.toString()}</TableCell>
+                          <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-300">#{row.signalId.toString()}</TableCell>
+                          <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-300">{formatTimestamp(row.publishedAt)}</TableCell>
+                          <TableCell className="max-w-[240px] break-all font-mono text-xs text-slate-600 dark:text-slate-300">
                             {row.protectedDataAddr}
                           </TableCell>
                           <TableCell>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-white/15 bg-slate-950/70"
+                              className="border-slate-300 dark:border-slate-300 dark:border-white/15 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70"
                               onClick={() => decryptPublicSignal(row)}
                               disabled={decrypting[key]}
                             >
@@ -597,12 +597,12 @@ export const TraderProfile: React.FC<{
                         {(decryptErrors[key] || decryptedResults[key]) && (
                           <TableRow>
                             <TableCell colSpan={5}>
-                              <div className="space-y-2 rounded-md border border-white/10 bg-slate-950/60 p-3">
+                              <div className="space-y-2 rounded-md border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
                                 {decryptErrors[key] && (
                                   <Badge variant="destructive">{decryptErrors[key]}</Badge>
                                 )}
                                 {decryptedResults[key]?.selectedApp && (
-                                  <p className="text-[11px] text-slate-400">
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                     app: {decryptedResults[key]?.selectedAppName ? `${decryptedResults[key]?.selectedAppName} ` : ""}
                                     <span className="font-mono">{decryptedResults[key]?.selectedApp}</span>
                                   </p>

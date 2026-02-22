@@ -59,11 +59,11 @@ export const LandingPage: React.FC<{
           </Badge>
 
           <div className="space-y-5">
-            <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl">
+            <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl lg:text-7xl">
               Verified alpha for
               <span className="text-gradient"> serious copy trading.</span>
             </h1>
-            <p className="max-w-2xl text-base text-slate-300 sm:text-lg">
+            <p className="max-w-2xl text-base text-slate-600 dark:text-slate-300 sm:text-lg">
               Shingo is a non-custodial signal marketplace with encrypted delivery,
               transparent access control, and a clean execution flow for subscribers.
             </p>
@@ -72,7 +72,7 @@ export const LandingPage: React.FC<{
           <div className="flex flex-wrap gap-3">
             <Button
               size="lg"
-              className="h-11 rounded-xl bg-red-600 text-white hover:bg-red-500"
+              className="h-11 rounded-xl bg-red-600 text-slate-900 dark:text-white hover:bg-red-500"
               onClick={() => onNavigate(Views.MARKETPLACE)}
             >
               Explore marketplace
@@ -81,7 +81,7 @@ export const LandingPage: React.FC<{
             <Button
               size="lg"
               variant="outline"
-              className="h-11 rounded-xl border-white/20 bg-slate-950/60"
+              className="h-11 rounded-xl border-slate-300 dark:border-slate-300 dark:border-white/20 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60"
               onClick={() => onNavigate(Views.DASHBOARD_TRADER)}
             >
               Open creator studio
@@ -90,19 +90,19 @@ export const LandingPage: React.FC<{
         </div>
 
         <Card className="glass-panel overflow-hidden border-red-400/20 shadow-glow">
-          <CardHeader className="border-b border-white/10">
+          <CardHeader className="border-b border-slate-200 dark:border-slate-200 dark:border-white/10">
             <CardTitle className="font-display text-xl">Live signal relay</CardTitle>
             <CardDescription>
               Snapshot of the encrypted publish pipeline for current market conditions.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-6">
-            <div className="rounded-lg border border-white/10 bg-slate-950/70 p-3 font-mono text-xs">
-              <div className="mb-2 flex items-center justify-between text-slate-400">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3 font-mono text-xs">
+              <div className="mb-2 flex items-center justify-between text-slate-500 dark:text-slate-400">
                 <span>{">"} STREAM</span>
                 <span className="text-emerald-300">healthy</span>
               </div>
-              <div className="space-y-1.5 text-slate-200">
+              <div className="space-y-1.5 text-slate-700 dark:text-slate-200">
                 <p>{">"} signal_encrypted = true</p>
                 <p>{">"} tee_dataset = protected</p>
                 <p>{">"} tx_digest = 0xa84...b10</p>
@@ -110,16 +110,16 @@ export const LandingPage: React.FC<{
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
-                <p className="text-[11px] uppercase tracking-wide text-slate-400">24h PnL</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">24h PnL</p>
                 <p className="font-mono text-lg font-semibold text-emerald-300">+12.4%</p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
-                <p className="text-[11px] uppercase tracking-wide text-slate-400">Signals</p>
-                <p className="font-mono text-lg font-semibold text-white">48</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Signals</p>
+                <p className="font-mono text-lg font-semibold text-slate-900 dark:text-white">48</p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
-                <p className="text-[11px] uppercase tracking-wide text-slate-400">Winrate</p>
+              <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Winrate</p>
                 <p className="font-mono text-lg font-semibold text-red-200">71%</p>
               </div>
             </div>
@@ -127,15 +127,15 @@ export const LandingPage: React.FC<{
         </Card>
       </section>
 
-      <section className="my-14 rounded-xl border border-white/10 bg-slate-950/65">
+      <section className="my-14 rounded-xl border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/65 dark:bg-slate-950/65">
         <Marquee>
           {TICKER.map((item) => (
             <div
               key={`${item.pair}-${item.move}`}
-              className="flex items-center gap-3 border-r border-white/10 px-6 py-2 font-mono text-sm"
+              className="flex items-center gap-3 border-r border-slate-200 dark:border-slate-200 dark:border-white/10 px-6 py-2 font-mono text-sm"
             >
-              <span className="text-slate-400">{item.pair}</span>
-              <span className="text-white">{item.value}</span>
+              <span className="text-slate-500 dark:text-slate-400">{item.pair}</span>
+              <span className="text-slate-900 dark:text-white">{item.value}</span>
               <span className={item.move.startsWith("+") ? "text-emerald-300" : "text-rose-300"}>
                 {item.move}
               </span>
@@ -148,14 +148,14 @@ export const LandingPage: React.FC<{
         {FEATURES.map((feature) => {
           const Icon = feature.icon;
           return (
-            <Card key={feature.title} className="glass-panel border-white/10">
+            <Card key={feature.title} className="glass-panel border-slate-200 dark:border-slate-200 dark:border-white/10">
               <CardHeader>
                 <Badge variant="secondary" className="w-fit gap-2 border border-red-400/25 bg-red-500/10 text-red-100">
                   <Icon className="h-3.5 w-3.5" />
                   Core
                 </Badge>
-                <CardTitle className="font-display text-xl text-white">{feature.title}</CardTitle>
-                <CardDescription className="text-slate-300">{feature.description}</CardDescription>
+                <CardTitle className="font-display text-xl text-slate-900 dark:text-white">{feature.title}</CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-300">{feature.description}</CardDescription>
               </CardHeader>
             </Card>
           );

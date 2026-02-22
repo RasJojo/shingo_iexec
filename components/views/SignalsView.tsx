@@ -149,7 +149,7 @@ export const SignalsView: React.FC<{
             {rows.map((row) => (
               <div
                 key={row.label}
-                className="rounded-md border border-white/10 bg-slate-900/80 p-2"
+                className="rounded-md border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-900/80 p-2"
               >
                 <p className="text-[10px] uppercase tracking-wide text-slate-500">{row.label}</p>
                 <p className="break-all font-mono text-xs text-slate-100">{String(row.value)}</p>
@@ -159,9 +159,9 @@ export const SignalsView: React.FC<{
         ) : (
           <p className="text-xs text-slate-400">No mapped fields found. Raw payload below.</p>
         )}
-        <details className="rounded-md border border-white/10 bg-slate-900/70 p-2">
+        <details className="rounded-md border border-slate-200 dark:border-white/10 bg-slate-100/70 dark:bg-slate-900/70 p-2">
           <summary className="cursor-pointer text-xs text-slate-300">Raw decrypted payload (JSON)</summary>
-          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-white/10 bg-slate-900/80 p-2 text-xs text-slate-100">
+          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-900/80 p-2 text-xs text-slate-100">
             {JSON.stringify(data, null, 2)}
           </pre>
         </details>
@@ -232,7 +232,7 @@ export const SignalsView: React.FC<{
   return (
     <div className="relative mx-auto w-full max-w-7xl px-4 pb-20 pt-10 sm:px-6 lg:px-8">
       {!isConnected && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-slate-950/70 backdrop-blur-sm">
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm">
           <Card className="mx-4 w-full max-w-md border-rose-300/30 bg-rose-500/10">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-display text-rose-100">
@@ -272,7 +272,7 @@ export const SignalsView: React.FC<{
           </Button>
         </div>
 
-        <Card className="mb-6 border-white/10 bg-slate-950/60">
+        <Card className="mb-6 border-slate-200 dark:border-white/10 bg-white/60 dark:bg-slate-950/60">
           <CardContent className="flex flex-wrap items-center gap-2 p-4 text-xs">
             <Badge className="border-red-400/30 bg-red-500/10 text-red-200">
               Subscribed seasons: {seasonIds.length}
@@ -306,7 +306,7 @@ export const SignalsView: React.FC<{
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {signals.map((signal) => (
-            <Card key={`${signal.seasonId.toString()}-${signal.id.toString()}`} className="glass-panel border-white/10">
+            <Card key={`${signal.seasonId.toString()}-${signal.id.toString()}`} className="glass-panel border-slate-200 dark:border-white/10">
               <CardHeader className="space-y-2 pb-3">
                 <CardTitle className="font-display text-lg text-white">
                   Signal #{signal.id.toString()}
@@ -316,7 +316,7 @@ export const SignalsView: React.FC<{
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 pt-0">
-                <div className="rounded-lg border border-white/10 bg-slate-950/80 p-3">
+                <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-950/80 p-3">
                   <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">protectedDataAddr</p>
                   <p className="break-all font-mono text-xs text-slate-200">{signal.protectedDataAddr}</p>
                 </div>
@@ -325,14 +325,14 @@ export const SignalsView: React.FC<{
                   <Badge className="border-red-400/30 bg-red-500/10 text-red-200">
                     {signal.seasonStatus === 0 ? "Subscriber-only (season OPEN)" : "Public (season CLOSED)"}
                   </Badge>
-                  <Badge variant="outline" className="border-white/15 text-slate-300">
+                  <Badge variant="outline" className="border-slate-300 dark:border-white/15 text-slate-300">
                     timestamp: {signal.publishedAt.toString()}
                   </Badge>
                 </div>
 
                 <Button
                   variant="outline"
-                  className="w-full border-white/15 bg-slate-950/70"
+                  className="w-full border-slate-300 dark:border-white/15 bg-white/70 dark:bg-slate-950/70"
                   onClick={async () => {
                     await navigator.clipboard.writeText(signal.protectedDataAddr);
                     setCopied(signal.protectedDataAddr);
@@ -392,7 +392,7 @@ export const SignalsView: React.FC<{
           ))}
 
           {signals.length === 0 && !loading && (
-            <Card className="border-white/10 bg-slate-950/60 md:col-span-2">
+            <Card className="border-slate-200 dark:border-white/10 bg-white/60 dark:bg-slate-950/60 md:col-span-2">
               <CardContent className="p-8 text-center text-sm text-slate-400">
                 No signal found for your wallet subscriptions.
               </CardContent>

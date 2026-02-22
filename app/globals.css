@@ -3,25 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Light theme (default) ─────────────────────────────────────────────── */
   :root {
-    --background: 232 38% 6%;
-    --foreground: 210 40% 98%;
-    --card: 227 34% 11%;
-    --card-foreground: 210 40% 98%;
-    --popover: 227 34% 11%;
-    --popover-foreground: 210 40% 98%;
+    --background: 0 0% 98%;
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
     --primary: 0 75% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 225 26% 18%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 225 20% 20%;
-    --muted-foreground: 215 20% 67%;
+    --secondary: 210 40% 93%;
+    --secondary-foreground: 224 71% 4%;
+    --muted: 210 40% 93%;
+    --muted-foreground: 215 16% 40%;
     --accent: 0 65% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 223 24% 23%;
-    --input: 223 24% 23%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
     --ring: 0 75% 39%;
     --chart-1: 0 75% 39%;
     --chart-2: 0 65% 50%;
@@ -31,6 +32,7 @@
     --radius: 0.9rem;
   }
 
+  /* ── Dark theme ─────────────────────────────────────────────────────────── */
   .dark {
     --background: 232 38% 6%;
     --foreground: 210 40% 98%;
@@ -64,16 +66,28 @@
 
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
+  }
+
+  /* Light body background */
+  body {
+    background-image:
+      radial-gradient(50% 50% at 15% 10%, rgba(174, 27, 27, 0.08), transparent 70%),
+      radial-gradient(40% 35% at 85% 5%, rgba(212, 43, 43, 0.06), transparent 72%),
+      radial-gradient(35% 30% at 50% 100%, rgba(138, 21, 21, 0.05), transparent 70%);
+  }
+
+  /* Dark body background */
+  .dark body {
     background-image:
       radial-gradient(50% 50% at 15% 10%, rgba(174, 27, 27, 0.18), transparent 70%),
       radial-gradient(40% 35% at 85% 5%, rgba(212, 43, 43, 0.14), transparent 72%),
       radial-gradient(35% 30% at 50% 100%, rgba(138, 21, 21, 0.12), transparent 70%),
       linear-gradient(180deg, rgba(8, 10, 18, 0.92) 0%, rgba(4, 5, 10, 1) 100%);
-    min-height: 100vh;
   }
 
   ::selection {
-    background: rgba(174, 27, 27, 0.35);
+    background: rgba(174, 27, 27, 0.25);
     color: hsl(var(--foreground));
   }
 
@@ -82,25 +96,39 @@
   }
 
   ::-webkit-scrollbar-track {
+    background: rgba(214, 219, 230, 0.45);
+  }
+
+  .dark ::-webkit-scrollbar-track {
     background: rgba(2, 6, 23, 0.45);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(51, 65, 85, 0.8);
+    background: rgba(148, 163, 184, 0.6);
     border-radius: 9999px;
   }
 
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(51, 65, 85, 0.8);
+  }
+
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.95);
+    background: rgba(100, 116, 139, 0.9);
   }
 }
 
 @layer utilities {
   .bg-grid-soft {
     background-image:
+      linear-gradient(to right, rgba(100, 116, 139, 0.15) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(100, 116, 139, 0.15) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .dark .bg-grid-soft {
+    background-image:
       linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
-    background-size: 64px 64px;
   }
 
   .mask-fade-bottom {
@@ -108,7 +136,7 @@
   }
 
   .glass-panel {
-    @apply border border-white/10 bg-slate-900/45 backdrop-blur-xl;
+    @apply border border-slate-200 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/45;
   }
 
   .text-gradient {
