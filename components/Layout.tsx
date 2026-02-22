@@ -161,7 +161,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="border-slate-200 bg-white/95 dark:border-white/10 dark:bg-slate-950/95">
+            <SheetContent side="right" className="border-slate-200 bg-slate-50/95 dark:border-white/10 dark:bg-slate-950/95">
               <SheetHeader>
                 <SheetTitle className="font-display">Navigation</SheetTitle>
                 <SheetDescription>
@@ -234,7 +234,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       <main className="relative z-10 flex-1">{children}</main>
 
-      <footer className="mt-20 border-t border-slate-200 bg-white/70 dark:border-white/10 dark:bg-slate-950/70">
+      <footer className="mt-20 border-t border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-slate-950/70">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>

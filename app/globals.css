@@ -5,24 +5,24 @@
 @layer base {
   /* ── Light theme (default) ─────────────────────────────────────────────── */
   :root {
-    --background: 0 0% 98%;
-    --foreground: 224 71% 4%;
-    --card: 0 0% 100%;
+    --background: 210 20% 94%;      /* gris-bleu doux — pas trop blanc */
+    --foreground: 224 71% 4%;       /* presque noir */
+    --card: 0 0% 100%;              /* cartes blanches sur fond gris */
     --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
     --primary: 0 75% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 93%;
+    --secondary: 210 30% 86%;
     --secondary-foreground: 224 71% 4%;
-    --muted: 210 40% 93%;
-    --muted-foreground: 215 16% 40%;
+    --muted: 210 30% 86%;
+    --muted-foreground: 215 25% 30%; /* label textes bien lisibles */
     --accent: 0 65% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 88%;
-    --input: 214 32% 88%;
+    --border: 214 25% 75%;           /* bordures bien visibles */
+    --input: 214 25% 75%;
     --ring: 0 75% 39%;
     --chart-1: 0 75% 39%;
     --chart-2: 0 65% 50%;
@@ -136,7 +136,7 @@
   }
 
   .glass-panel {
-    @apply border border-slate-200 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/45;
+    @apply border border-slate-300 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/45;
   }
 
   .text-gradient {

@@ -47,7 +47,7 @@ export const ConnectWallet: React.FC<{
         Back to landing
       </Button>
 
-      <Card className="glass-panel mx-auto w-full max-w-md border-slate-200 dark:border-white/10">
+      <Card className="glass-panel mx-auto w-full max-w-md border-slate-300 dark:border-white/10">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 inline-flex rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-red-100">
             <ShieldCheck className="h-6 w-6" />
@@ -97,7 +97,7 @@ export const ConnectWallet: React.FC<{
           ) : (
             <>
               <div
-                className="rounded-lg border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-slate-950/70 p-3 text-center font-mono text-xs text-slate-200"
+                className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/70 p-3 text-center font-mono text-xs text-slate-200"
                 title={address ?? ""}
               >
                 {address ? shortenAddress(address, 10, 8) : "Unknown wallet"}
@@ -118,7 +118,7 @@ export const ConnectWallet: React.FC<{
 
               <Button
                 variant="outline"
-                className="w-full border-slate-300 dark:border-white/15 bg-white/70 dark:bg-slate-950/70"
+                className="w-full border-slate-400 dark:border-white/15 bg-slate-50/80 dark:bg-slate-950/70"
                 onClick={() => {
                   disconnect();
                   localStorage.removeItem("authToken");

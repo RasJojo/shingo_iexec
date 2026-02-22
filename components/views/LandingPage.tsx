@@ -81,7 +81,7 @@ export const LandingPage: React.FC<{
             <Button
               size="lg"
               variant="outline"
-              className="h-11 rounded-xl border-slate-300 dark:border-slate-300 dark:border-white/20 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60"
+              className="h-11 rounded-xl border-slate-300 dark:border-slate-400 dark:border-white/20 bg-slate-50/70 dark:bg-slate-50/70 dark:bg-slate-950/60"
               onClick={() => onNavigate(Views.DASHBOARD_TRADER)}
             >
               Open creator studio
@@ -90,14 +90,14 @@ export const LandingPage: React.FC<{
         </div>
 
         <Card className="glass-panel overflow-hidden border-red-400/20 shadow-glow">
-          <CardHeader className="border-b border-slate-200 dark:border-slate-200 dark:border-white/10">
+          <CardHeader className="border-b border-slate-200 dark:border-slate-300 dark:border-white/10">
             <CardTitle className="font-display text-xl">Live signal relay</CardTitle>
             <CardDescription>
               Snapshot of the encrypted publish pipeline for current market conditions.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-6">
-            <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3 font-mono text-xs">
+            <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3 font-mono text-xs">
               <div className="mb-2 flex items-center justify-between text-slate-500 dark:text-slate-400">
                 <span>{">"} STREAM</span>
                 <span className="text-emerald-300">healthy</span>
@@ -110,15 +110,15 @@ export const LandingPage: React.FC<{
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/70 dark:bg-slate-50/70 dark:bg-slate-950/60 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">24h PnL</p>
                 <p className="font-mono text-lg font-semibold text-emerald-300">+12.4%</p>
               </div>
-              <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/70 dark:bg-slate-50/70 dark:bg-slate-950/60 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Signals</p>
                 <p className="font-mono text-lg font-semibold text-slate-900 dark:text-white">48</p>
               </div>
-              <div className="rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/60 dark:bg-slate-950/60 p-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/70 dark:bg-slate-50/70 dark:bg-slate-950/60 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Winrate</p>
                 <p className="font-mono text-lg font-semibold text-red-200">71%</p>
               </div>
@@ -127,12 +127,12 @@ export const LandingPage: React.FC<{
         </Card>
       </section>
 
-      <section className="my-14 rounded-xl border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/65 dark:bg-slate-950/65">
+      <section className="my-14 rounded-xl border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white/65 dark:bg-slate-950/65">
         <Marquee>
           {TICKER.map((item) => (
             <div
               key={`${item.pair}-${item.move}`}
-              className="flex items-center gap-3 border-r border-slate-200 dark:border-slate-200 dark:border-white/10 px-6 py-2 font-mono text-sm"
+              className="flex items-center gap-3 border-r border-slate-200 dark:border-slate-300 dark:border-white/10 px-6 py-2 font-mono text-sm"
             >
               <span className="text-slate-500 dark:text-slate-400">{item.pair}</span>
               <span className="text-slate-900 dark:text-white">{item.value}</span>
@@ -148,7 +148,7 @@ export const LandingPage: React.FC<{
         {FEATURES.map((feature) => {
           const Icon = feature.icon;
           return (
-            <Card key={feature.title} className="glass-panel border-slate-200 dark:border-slate-200 dark:border-white/10">
+            <Card key={feature.title} className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
               <CardHeader>
                 <Badge variant="secondary" className="w-fit gap-2 border border-red-400/25 bg-red-500/10 text-red-100">
                   <Icon className="h-3.5 w-3.5" />

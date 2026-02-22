@@ -444,7 +444,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
         </div>
         <Button
           variant="outline"
-          className="border-slate-300 dark:border-slate-300 dark:border-white/15 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70"
+          className="border-slate-300 dark:border-slate-400 dark:border-white/15 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70"
           onClick={() => onNavigate(Views.SIGNALS)}
         >
           Open signals terminal
@@ -479,7 +479,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                     value={pseudo}
                     onChange={(e) => setPseudo(e.target.value)}
                     placeholder="ex: alpha_sensei"
-                    className="mt-2 border-amber-200/30 bg-white/80 dark:bg-white/80 dark:bg-slate-950/80"
+                    className="mt-2 border-amber-200/30 bg-slate-50/90 dark:bg-slate-50/90 dark:bg-slate-950/80"
                   />
                 </div>
                 <Button
@@ -494,7 +494,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
 
             {isTrader && (
               <>
-                <form className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-4" onSubmit={openSeason}>
+                <form className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-4" onSubmit={openSeason}>
                   <p className="text-sm text-slate-700 dark:text-slate-200">
                     Open a new season with a fixed subscription price.
                   </p>
@@ -509,7 +509,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                       step="0.01"
                       value={seasonPrice}
                       onChange={(e) => setSeasonPrice(e.target.value)}
-                      className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                      className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                     />
                   </div>
                   <Button
@@ -521,7 +521,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                   </Button>
                 </form>
 
-                <form className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-4" onSubmit={publishSignal}>
+                <form className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-4" onSubmit={publishSignal}>
                   <p className="text-sm text-slate-700 dark:text-slate-200">
                     Encrypt payload with iExec TEE then publish metadata on-chain.
                   </p>
@@ -531,14 +531,14 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                       id="signalSeason"
                       value={currentSeasonId > 0n ? `#${currentSeasonId.toString()}` : "No active season"}
                       readOnly
-                      className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/60 dark:bg-slate-100/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400"
+                      className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/60 dark:bg-slate-200/60 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400"
                     />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <Label htmlFor="signalMarket">Market</Label>
                       <Select value={market} onValueChange={setMarket}>
-                        <SelectTrigger id="signalMarket" className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80">
+                        <SelectTrigger id="signalMarket" className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80">
                           <SelectValue placeholder="Select market" />
                         </SelectTrigger>
                         <SelectContent>
@@ -553,7 +553,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                     <div>
                       <Label htmlFor="signalSide">Side</Label>
                       <Select value={side} onValueChange={setSide}>
-                        <SelectTrigger id="signalSide" className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80">
+                        <SelectTrigger id="signalSide" className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80">
                           <SelectValue placeholder="Select side" />
                         </SelectTrigger>
                         <SelectContent>
@@ -568,7 +568,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                     <div>
                       <Label htmlFor="signalEntryType">Entry Type</Label>
                       <Select value={entryKind} onValueChange={setEntryKind}>
-                        <SelectTrigger id="signalEntryType" className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80">
+                        <SelectTrigger id="signalEntryType" className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -590,7 +590,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                         value={entryPrice}
                         onChange={(e) => setEntryPrice(e.target.value)}
                         placeholder="65000"
-                        className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                        className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                       />
                     </div>
                     <div>
@@ -603,7 +603,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                         value={stopLoss}
                         onChange={(e) => setStopLoss(e.target.value)}
                         placeholder="63000"
-                        className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                        className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                       />
                     </div>
                     <div>
@@ -616,7 +616,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                         value={takeProfitPrice}
                         onChange={(e) => setTakeProfitPrice(e.target.value)}
                         placeholder="70000"
-                        className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                        className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                       />
                     </div>
                     <div>
@@ -630,7 +630,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                         value={takeProfitSize}
                         onChange={(e) => setTakeProfitSize(e.target.value)}
                         placeholder="100"
-                        className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                        className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                       />
                     </div>
                     <div>
@@ -643,7 +643,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                         value={sizeUsd}
                         onChange={(e) => setSizeUsd(e.target.value)}
                         placeholder="1000"
-                        className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                        className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                       />
                     </div>
                   </div>
@@ -659,13 +659,13 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                         value={leverage}
                         onChange={(e) => setLeverage(e.target.value)}
                         placeholder="10"
-                        className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80"
+                        className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80"
                       />
                     </div>
                     <div>
                       <Label htmlFor="signalVenue">Venue</Label>
                       <Select value={venue} onValueChange={setVenue}>
-                        <SelectTrigger id="signalVenue" className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80">
+                        <SelectTrigger id="signalVenue" className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80">
                           <SelectValue placeholder="Venue" />
                         </SelectTrigger>
                         <SelectContent>
@@ -680,7 +680,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
                     <div>
                       <Label htmlFor="signalTimeframe">Timeframe</Label>
                       <Select value={timeframe} onValueChange={setTimeframe}>
-                        <SelectTrigger id="signalTimeframe" className="mt-2 border-slate-200 dark:border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-100/80 dark:bg-slate-900/80">
+                        <SelectTrigger id="signalTimeframe" className="mt-2 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-200/80 dark:bg-slate-900/80">
                           <SelectValue placeholder="Time" />
                         </SelectTrigger>
                         <SelectContent>
@@ -733,43 +733,43 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
         </Card>
 
         <div className="space-y-6">
-          <Card className="glass-panel border-slate-200 dark:border-slate-200 dark:border-white/10">
+          <Card className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
             <CardHeader>
               <CardTitle className="font-display text-xl text-slate-900 dark:text-white">Status</CardTitle>
               <CardDescription>Live state from ShingoHub.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                 <span className="text-slate-600 dark:text-slate-300">Wallet</span>
                 <span className="font-mono text-slate-800 dark:text-slate-100">
                   {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Not connected"}
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                 <span className="text-slate-600 dark:text-slate-300">Trader profile</span>
                 <span className="font-mono text-slate-800 dark:text-slate-100">{loading ? "loading..." : isTrader ? "active" : "missing"}</span>
               </div>
               {isTrader && (
                 <>
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                     <span className="text-slate-600 dark:text-slate-300">Pseudo</span>
                     <span className="font-mono text-slate-800 dark:text-slate-100">{traderPseudo}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                     <span className="text-slate-600 dark:text-slate-300">Current season</span>
                     <span className="font-mono text-slate-800 dark:text-slate-100">
                       {currentSeasonId > 0n ? `#${currentSeasonId.toString()}` : "none"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                     <span className="text-slate-600 dark:text-slate-300">Season status</span>
                     <span className="font-mono text-slate-800 dark:text-slate-100">{currentSeasonStatus}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                     <span className="text-slate-600 dark:text-slate-300">Price</span>
                     <span className="font-mono text-slate-800 dark:text-slate-100">{currentSeasonPriceDisplay}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/70 dark:bg-slate-950/70 p-3">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-50/80 dark:bg-slate-950/70 p-3">
                     <span className="text-slate-600 dark:text-slate-300">Signals in season</span>
                     <span className="font-mono text-slate-800 dark:text-slate-100">{currentSeasonSignals.toString()}</span>
                   </div>
@@ -778,7 +778,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
             </CardContent>
           </Card>
 
-          <Card className="glass-panel border-slate-200 dark:border-slate-200 dark:border-white/10">
+          <Card className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
             <CardHeader>
               <CardTitle className="font-display text-xl text-slate-900 dark:text-white">Flow checklist</CardTitle>
               <CardDescription>Expected sequence for end-to-end usage.</CardDescription>
@@ -799,7 +799,7 @@ export const TraderDashboard: React.FC<{ onNavigate: (view: Views) => void }> = 
             </CardContent>
           </Card>
 
-          <Card className="glass-panel border-slate-200 dark:border-slate-200 dark:border-white/10">
+          <Card className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
             <CardContent className="space-y-2 p-4 text-sm">
               <p className="text-slate-600 dark:text-slate-300">Contract explorer</p>
               <a
