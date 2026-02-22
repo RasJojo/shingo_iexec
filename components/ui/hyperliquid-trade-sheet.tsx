@@ -294,6 +294,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
   const [agentApproved, setAgentApproved] = useState(false);
   const [txResult, setTxResult] = useState<string | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
+  const [forceMarket, setForceMarket] = useState(false);
 
   // ── Payload fields ─────────────────────────────────────────────────────────
   const market = String(payload.market ?? "");
@@ -370,7 +371,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
     try {
       const agent = loadOrCreateAgent();
       const nonce = Date.now();
-      const priceStr = isMarket ? "0" : floatToWire(entryPrice);
+      const useMarket = isMarket || forceMarket;
+      const priceStr = useMarket ? "0" : floatToWire(entryPrice);
       const sizeStr = floatToWire(size);
 
       const orderWire = {
@@ -379,17 +381,22 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
         p: priceStr,
         s: sizeStr,
         r: false,
-        t: isMarket ? { market: { tif: "Ioc" } } : { limit: { tif: "Gtc" } },
+        t: useMarket ? { market: { tif: "Ioc" } } : { limit: { tif: "Gtc" } },
       };
 
       const action = { type: "order", orders: [orderWire], grouping: "na" };
 
       const sig = await signL1ActionWithAgent(agent, action, null, nonce, false);
 
-      const data = await sendToHL({ action, nonce, signature: sig, vaultAddress: null });
+      const hlPayload = { action, nonce, signature: sig, vaultAddress: null };
+      console.log("[HL] payload envoyé:", JSON.stringify(hlPayload, null, 2));
+
+      const data = await sendToHL(hlPayload);
+      console.log("[HL] réponse:", JSON.stringify(data, null, 2));
 
       const statuses: any[] = data?.response?.data?.statuses ?? [];
       const first = statuses[0];
+      console.log("[HL] first status:", JSON.stringify(first, null, 2));
       if (first?.error) throw new Error(first.error);
 
       const oid = first?.resting?.oid ?? first?.filled?.oid ?? "unknown";
@@ -444,7 +451,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
               { label: "Size USD", value: `$${formatPrice(effectiveSizeUsd)}`, mono: true },
               { label: "Size (asset)", value: `${size > 0 ? size.toFixed(6) : "—"} ${baseAsset}`, mono: true },
             ].map((row) => (
-              <div key={row.label} className="rounded-md border border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-900/80 p-2">
+              <div key={row.label} className="rounded-md border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-2">
                 <p className="text-[10px] uppercase tracking-wide text-slate-500">{row.label}</p>
                 <p className={`text-xs ${row.mono ? "font-mono" : ""} ${row.className ?? "text-slate-100"}`}>
                   {row.value}
@@ -454,7 +461,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
           </div>
 
           {/* Taille customisable */}
-          <div className="rounded-md border border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-900/80 p-3 space-y-2">
+          <div className="rounded-md border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-3 space-y-2">
             <label className="text-[10px] uppercase tracking-wide text-slate-500 block">
               Taille en USD{sizeUsd > 0 ? ` (signal : $${sizeUsd})` : ""}
             </label>
@@ -467,7 +474,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
                 value={customSizeUsd}
                 onChange={(e) => setCustomSizeUsd(e.target.value)}
                 placeholder={sizeUsd > 0 ? String(sizeUsd) : "ex: 10"}
-                className="flex-1 rounded-md border border-slate-400 dark:border-white/15 bg-slate-50/90 dark:bg-slate-950/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="flex-1 rounded-md border border-slate-400 dark:border-white/15 bg-white dark:bg-slate-950/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               {sizeUsd > 0 && (
                 <button
@@ -497,7 +504,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
 
           {/* Explication agent wallet */}
           {!agentApproved && (
-            <div className="rounded-md border border-slate-700 bg-slate-200/60 dark:bg-slate-900/60 p-3 text-xs text-slate-300 space-y-1">
+            <div className="rounded-md border border-slate-700 bg-white dark:bg-slate-900/60 p-3 text-xs text-slate-300 space-y-1">
               <p className="font-semibold text-slate-200 flex items-center gap-1">
                 <KeyRound className="h-3 w-3" /> 2 étapes requises
               </p>
@@ -510,8 +517,26 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
             </div>
           )}
 
+          {/* Toggle forcer Market si le signal est Limit */}
+          {!isMarket && (
+            <label className="flex cursor-pointer items-center gap-3 rounded-md border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/60 p-3 text-xs">
+              <input
+                type="checkbox"
+                checked={forceMarket}
+                onChange={(e) => setForceMarket(e.target.checked)}
+                className="h-4 w-4 accent-emerald-500"
+              />
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-slate-200">Forcer ordre Market</p>
+                <p className="text-gray-600 dark:text-slate-400 mt-0.5">
+                  Exécution immédiate au prix du marché — contourne l&apos;erreur &quot;price too far from reference&quot;.
+                </p>
+              </div>
+            </label>
+          )}
+
           {/* Market order warning */}
-          {isMarket && (
+          {(isMarket || forceMarket) && (
             <div className="flex gap-2 rounded-md border border-amber-300/30 bg-amber-500/10 p-3 text-xs text-amber-100">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
               <span>
@@ -539,7 +564,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
         <SheetFooter className="flex-col gap-2 border-t border-slate-300 dark:border-white/10 pt-4 sm:flex-col">
           <Button
             variant="outline"
-            className="w-full border-slate-400 dark:border-white/15 bg-slate-200/70 dark:bg-slate-900/70 text-slate-200 hover:bg-slate-800"
+            className="w-full border-slate-400 dark:border-white/15 bg-white dark:bg-slate-900/70 text-slate-200 hover:bg-slate-800"
             onClick={() => window.open(deepLink, "_blank", "noopener")}
           >
             <ExternalLink className="h-4 w-4" />

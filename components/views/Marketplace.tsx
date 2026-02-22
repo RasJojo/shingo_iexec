@@ -170,10 +170,10 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pb-20 pt-10 sm:px-6 lg:px-8">
       <div className="space-y-2">
-        <h2 className="font-display text-3xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+        <h2 className="font-display text-3xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
           Alpha Marketplace
         </h2>
-        <p className="max-w-2xl text-slate-600 dark:text-slate-300">
+        <p className="max-w-2xl text-gray-700 dark:text-slate-300">
           Discover active traders on Arbitrum and subscribe to the current season.
         </p>
       </div>
@@ -181,12 +181,12 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
       <Card className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600 dark:text-slate-400" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search pseudo or wallet"
-              className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/90 dark:bg-slate-50/90 dark:bg-slate-950/80 pl-9"
+              className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-950/80 pl-9"
             />
           </div>
 
@@ -195,7 +195,7 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
               value={filterState ?? "all"}
               onValueChange={(value) => setFilterState(value === "all" ? null : value)}
             >
-              <SelectTrigger className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/90 dark:bg-slate-50/90 dark:bg-slate-950/80">
+              <SelectTrigger className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-950/80">
                 <SelectValue placeholder="Season status" />
               </SelectTrigger>
               <SelectContent>
@@ -211,7 +211,7 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
 
           <Button
             variant="outline"
-            className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/90 dark:bg-slate-50/90 dark:bg-slate-950/80"
+            className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-950/80"
             onClick={() => {
               setSearchTerm("");
               setFilterState(null);
@@ -244,14 +244,14 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
                 traderAddr: trader.wallet,
               })
             }
-            className="group cursor-pointer border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white/50 dark:bg-slate-950/50 transition duration-300 hover:-translate-y-1 hover:border-red-400/40 hover:bg-slate-200/70 dark:hover:bg-slate-200/70 dark:bg-slate-900/70"
+            className="group cursor-pointer border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white/50 dark:bg-slate-950/50 transition duration-300 hover:-translate-y-1 hover:border-red-400/40 hover:bg-white dark:hover:bg-white dark:bg-slate-900/70"
           >
             <CardHeader className="space-y-4 pb-4">
               <div className="flex items-start justify-between">
                 <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
                   <WalletAvatar address={trader.wallet} size={44} />
                   <div className="min-w-0">
-                    <CardTitle className="truncate font-display text-lg text-slate-900 dark:text-white" title={trader.pseudo}>
+                    <CardTitle className="truncate font-display text-lg text-gray-950 dark:text-white" title={trader.pseudo}>
                       {trader.pseudo}
                     </CardTitle>
                     <CardDescription className="truncate text-xs" title={trader.wallet}>
@@ -259,14 +259,14 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
                     </CardDescription>
                   </div>
                 </div>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400 transition group-hover:text-red-200" />
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-600 dark:text-slate-400 transition group-hover:text-red-200" />
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <Badge className="border-red-400/30 bg-red-500/10 text-red-100">
                   {trader.statusLabel}
                 </Badge>
-                <Badge variant="outline" className="border-slate-300 dark:border-slate-400 dark:border-white/15 text-slate-600 dark:text-slate-300">
+                <Badge variant="outline" className="border-slate-300 dark:border-slate-400 dark:border-white/15 text-gray-700 dark:text-slate-300">
                   season #{trader.currentSeasonId || "-"}
                 </Badge>
               </div>
@@ -275,11 +275,11 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
             <CardContent className="space-y-4 pt-0">
               <p className="line-clamp-2 text-sm text-slate-300">{trader.description}</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-900/80 p-2">
+                <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-2">
                   <p className="font-mono text-[10px] uppercase text-slate-500">Signals</p>
                   <p className="text-slate-200">{trader.signalCount}</p>
                 </div>
-                <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-slate-900/80 p-2">
+                <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-2">
                   <p className="font-mono text-[10px] uppercase text-slate-500">Subs</p>
                   <p className="text-slate-200">{trader.subscribers}</p>
                 </div>

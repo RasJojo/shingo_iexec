@@ -36,19 +36,19 @@ export const SubscriberDashboard: React.FC<{ onNavigate: (view: Views) => void }
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/70 p-3">
+              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white/90 dark:bg-slate-950/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Renewal</p>
                 <p className="font-mono text-sm text-white">12 days</p>
               </div>
-              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/70 p-3">
+              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white/90 dark:bg-slate-950/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Current ROI</p>
                 <p className="font-mono text-sm text-emerald-300">+8.4%</p>
               </div>
-              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/70 p-3">
+              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white/90 dark:bg-slate-950/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Signals 24h</p>
                 <p className="font-mono text-sm text-white">7</p>
               </div>
-              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/70 p-3">
+              <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white/90 dark:bg-slate-950/70 p-3">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Risk tier</p>
                 <p className="font-mono text-sm text-red-200">Balanced</p>
               </div>
@@ -62,7 +62,7 @@ export const SubscriberDashboard: React.FC<{ onNavigate: (view: Views) => void }
                 <Terminal className="h-4 w-4" />
                 Open terminal
               </Button>
-              <Button variant="outline" className="border-slate-400 dark:border-white/15 bg-slate-50/80 dark:bg-slate-950/70">
+              <Button variant="outline" className="border-slate-400 dark:border-white/15 bg-white/90 dark:bg-slate-950/70">
                 <Settings2 className="h-4 w-4" />
                 Manage settings
               </Button>

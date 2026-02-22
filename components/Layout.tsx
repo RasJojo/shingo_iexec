@@ -84,10 +84,10 @@ export const Layout: React.FC<LayoutProps> = ({
               <Image src="/logoshingo.svg" alt="Shingo" width={28} height={28} />
             </div>
             <div className="text-left">
-              <p className="font-display text-base font-semibold tracking-tight text-slate-900 dark:text-white">
+              <p className="font-display text-base font-semibold tracking-tight text-gray-950 dark:text-white">
                 SHINGO
               </p>
-              <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] font-mono uppercase tracking-[0.16em] text-gray-600 dark:text-slate-400">
                 Arbitrum Signal Layer
               </p>
             </div>
@@ -120,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({
               size="icon"
               onClick={toggle}
               aria-label="Toggle theme"
-              className="text-slate-600 dark:text-slate-300"
+              className="text-gray-700 dark:text-slate-300"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -161,7 +161,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="border-slate-200 bg-slate-50/95 dark:border-white/10 dark:bg-slate-950/95">
+            <SheetContent side="right" className="border-slate-200 bg-white dark:border-white/10 dark:bg-slate-950/95">
               <SheetHeader>
                 <SheetTitle className="font-display">Navigation</SheetTitle>
                 <SheetDescription>
@@ -220,7 +220,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 )}
                 <Button
                   variant="ghost"
-                  className="w-full justify-start gap-2 text-slate-600 dark:text-slate-300"
+                  className="w-full justify-start gap-2 text-gray-700 dark:text-slate-300"
                   onClick={toggle}
                 >
                   {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -234,12 +234,12 @@ export const Layout: React.FC<LayoutProps> = ({
 
       <main className="relative z-10 flex-1">{children}</main>
 
-      <footer className="mt-20 border-t border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-slate-950/70">
+      <footer className="mt-20 border-t border-slate-200 bg-white/90 dark:border-white/10 dark:bg-slate-950/70">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="font-display text-xl font-semibold text-slate-900 dark:text-white">Shingo Protocol</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="font-display text-xl font-semibold text-gray-950 dark:text-white">Shingo Protocol</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">
                 Encrypted signals. On-chain subscriptions. Non-custodial settlement.
               </p>
             </div>
@@ -249,7 +249,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </Badge>
           </div>
           <Separator />
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 dark:text-slate-400">
             <span>© 2026 Shingo.</span>
             <div className="flex items-center gap-4 font-mono uppercase tracking-wider">
               <a href="#" className="hover:text-red-600 dark:hover:text-red-200">

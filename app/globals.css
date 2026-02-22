@@ -5,24 +5,24 @@
 @layer base {
   /* ── Light theme (default) ─────────────────────────────────────────────── */
   :root {
-    --background: 210 20% 94%;      /* gris-bleu doux — pas trop blanc */
-    --foreground: 224 71% 4%;       /* presque noir */
-    --card: 0 0% 100%;              /* cartes blanches sur fond gris */
-    --card-foreground: 224 71% 4%;
+    --background: 210 16% 82%;      /* gris moyen — fort contraste avec cartes blanches */
+    --foreground: 0 0% 4%;          /* noir quasi-pur */
+    --card: 0 0% 100%;              /* cartes blanches */
+    --card-foreground: 0 0% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
+    --popover-foreground: 0 0% 4%;
     --primary: 0 75% 39%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 30% 86%;
-    --secondary-foreground: 224 71% 4%;
-    --muted: 210 30% 86%;
-    --muted-foreground: 215 25% 30%; /* label textes bien lisibles */
+    --secondary: 210 16% 74%;
+    --secondary-foreground: 0 0% 4%;
+    --muted: 210 16% 74%;
+    --muted-foreground: 0 0% 20%;   /* gris très foncé — labels lisibles */
     --accent: 0 65% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 25% 75%;           /* bordures bien visibles */
-    --input: 214 25% 75%;
+    --border: 214 16% 58%;           /* bordures nettement visibles */
+    --input: 214 16% 58%;
     --ring: 0 75% 39%;
     --chart-1: 0 75% 39%;
     --chart-2: 0 65% 50%;

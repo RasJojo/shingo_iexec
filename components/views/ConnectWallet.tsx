@@ -97,7 +97,7 @@ export const ConnectWallet: React.FC<{
           ) : (
             <>
               <div
-                className="rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/70 p-3 text-center font-mono text-xs text-slate-200"
+                className="rounded-lg border border-slate-300 dark:border-white/10 bg-white/90 dark:bg-slate-950/70 p-3 text-center font-mono text-xs text-slate-200"
                 title={address ?? ""}
               >
                 {address ? shortenAddress(address, 10, 8) : "Unknown wallet"}
@@ -118,7 +118,7 @@ export const ConnectWallet: React.FC<{
 
               <Button
                 variant="outline"
-                className="w-full border-slate-400 dark:border-white/15 bg-slate-50/80 dark:bg-slate-950/70"
+                className="w-full border-slate-400 dark:border-white/15 bg-white/90 dark:bg-slate-950/70"
                 onClick={() => {
                   disconnect();
                   localStorage.removeItem("authToken");
