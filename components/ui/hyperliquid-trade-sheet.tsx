@@ -70,22 +70,23 @@ const APPROVE_AGENT_TYPES = {
   ],
 };
 
-// ─── Asset index map ───────────────────────────────────────────────────────────
+// ─── Asset index map (Hyperliquid TESTNET) ────────────────────────────────────
+// Index récupérés via POST /info {"type":"meta"} sur api.hyperliquid-testnet.xyz
+// ⚠️  Ces index diffèrent du mainnet — à mettre à jour si le testnet change
 const HL_ASSET_INDEX: Record<string, number> = {
-  BTC: 0,
-  ETH: 1,
-  SOL: 2,
-  ARB: 4,
-  AVAX: 5,
+  SOL: 0,
+  BTC: 3,
+  ETH: 4,
+  MATIC: 5,
   BNB: 6,
-  MATIC: 7,
-  OP: 8,
-  DOGE: 9,
-  LINK: 10,
-  SUI: 35,
+  AVAX: 7,
+  OP: 11,
+  ARB: 13,
+  SUI: 25,
+  DOGE: 173,
 };
 
-// Taille minimum par asset sur Hyperliquid (en unités de l'asset)
+// Taille minimum par asset sur Hyperliquid testnet (en unités de l'asset)
 const HL_MIN_SIZE: Record<string, number> = {
   BTC: 0.001,
   ETH: 0.01,
@@ -96,7 +97,6 @@ const HL_MIN_SIZE: Record<string, number> = {
   MATIC: 10,
   OP: 1,
   DOGE: 100,
-  LINK: 1,
   SUI: 1,
 };
 
@@ -388,15 +388,10 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
 
       const sig = await signL1ActionWithAgent(agent, action, null, nonce, false);
 
-      const hlPayload = { action, nonce, signature: sig, vaultAddress: null };
-      console.log("[HL] payload envoyé:", JSON.stringify(hlPayload, null, 2));
-
-      const data = await sendToHL(hlPayload);
-      console.log("[HL] réponse:", JSON.stringify(data, null, 2));
+      const data = await sendToHL({ action, nonce, signature: sig, vaultAddress: null });
 
       const statuses: any[] = data?.response?.data?.statuses ?? [];
       const first = statuses[0];
-      console.log("[HL] first status:", JSON.stringify(first, null, 2));
       if (first?.error) throw new Error(first.error);
 
       const oid = first?.resting?.oid ?? first?.filled?.oid ?? "unknown";
