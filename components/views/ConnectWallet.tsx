@@ -40,19 +40,19 @@ export const ConnectWallet: React.FC<{
     <div className="mx-auto flex min-h-[70vh] w-full max-w-2xl flex-col px-4 py-12 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
-        className="mb-8 w-fit px-2 text-slate-300"
+        className="mb-8 w-fit px-2 text-gray-600 dark:text-slate-300"
         onClick={() => onNavigate(Views.LANDING)}
       >
         <ArrowLeft className="h-4 w-4" />
         Back to landing
       </Button>
 
-      <Card className="glass-panel mx-auto w-full max-w-md border-slate-300 dark:border-white/10">
+      <Card className="glass-panel mx-auto w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-3 inline-flex rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-red-100">
+          <div className="mx-auto mb-3 inline-flex rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-red-600 dark:text-red-100">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <CardTitle className="font-display text-2xl text-white">Connect EVM wallet</CardTitle>
+          <CardTitle className="font-display text-2xl text-gray-950 dark:text-white">Connect EVM wallet</CardTitle>
           <CardDescription>
             Use MetaMask or Rabby on Arbitrum to access Shingo subscriptions.
           </CardDescription>
@@ -66,9 +66,9 @@ export const ConnectWallet: React.FC<{
           )}
 
           {connectError && (
-            <div className="rounded-md border border-rose-300/30 bg-rose-500/10 p-3 text-xs text-rose-100">
+            <div className="rounded-md border border-rose-300/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-100">
               {connectError}
-              <p className="mt-1 text-rose-200/70">
+              <p className="mt-1 text-rose-600/70 dark:text-rose-200/70">
                 Ouvre MetaMask manuellement, va dans Paramètres → Sites connectés et supprime ce domaine, puis réessaie.
               </p>
             </div>
@@ -97,7 +97,7 @@ export const ConnectWallet: React.FC<{
           ) : (
             <>
               <div
-                className="rounded-lg border border-slate-300 dark:border-white/10 bg-white/90 dark:bg-slate-950/70 p-3 text-center font-mono text-xs text-slate-200"
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center font-mono text-xs text-gray-800 dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-200"
                 title={address ?? ""}
               >
                 {address ? shortenAddress(address, 10, 8) : "Unknown wallet"}
@@ -111,14 +111,14 @@ export const ConnectWallet: React.FC<{
                   Switch to Arbitrum chain ({TARGET_CHAIN_ID})
                 </Button>
               ) : (
-                <Badge className="w-full justify-center border-emerald-300/30 bg-emerald-400/10 text-emerald-100">
+                <Badge className="w-full justify-center border-emerald-300/30 bg-emerald-400/10 text-emerald-700 dark:text-emerald-100">
                   Wallet connected on target network
                 </Badge>
               )}
 
               <Button
                 variant="outline"
-                className="w-full border-slate-400 dark:border-white/15 bg-white/90 dark:bg-slate-950/70"
+                className="w-full border-slate-300 bg-white dark:border-white/15 dark:bg-slate-950/70"
                 onClick={() => {
                   disconnect();
                   localStorage.removeItem("authToken");
@@ -129,7 +129,7 @@ export const ConnectWallet: React.FC<{
             </>
           )}
 
-          <p className="pt-2 text-center text-xs text-slate-400">
+          <p className="pt-2 text-center text-xs text-gray-500 dark:text-slate-400">
             No seed phrase or private key is ever requested.
           </p>
         </CardContent>

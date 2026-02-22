@@ -343,6 +343,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
   const minSize = HL_MIN_SIZE[baseAsset] ?? null;
   const minSizeUsd = minSize !== null && entryPrice > 0 ? minSize * entryPrice : null;
   const isBelowMinSize = minSize !== null && size > 0 && size < minSize;
+  const effectiveNotional = size * entryPrice;
+  const isBelowMinNotional = effectiveNotional > 0 && effectiveNotional < 10;
   const rrRatio = computeRR(entryPrice, stopLoss, takeProfitPrice, isBuy);
   const slPct = entryPrice > 0 ? ((Math.abs(entryPrice - stopLoss) / entryPrice) * 100).toFixed(2) : "—";
   const tpPct = entryPrice > 0 ? ((Math.abs(takeProfitPrice - entryPrice) / entryPrice) * 100).toFixed(2) : "—";
@@ -385,6 +387,10 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
     if (isBelowMinSize && minSize !== null) {
       const minUsd = minSizeUsd !== null ? ` (~$${Math.ceil(minSizeUsd)})` : "";
       setTxError(`Taille trop petite. Minimum : ${minSize} ${baseAsset}${minUsd}.`);
+      return;
+    }
+    if (isBelowMinNotional) {
+      setTxError(`Valeur notionnelle trop faible. Minimum $10 par ordre (actuel : $${effectiveNotional.toFixed(2)}).`);
       return;
     }
 
@@ -440,8 +446,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="flex w-full flex-col border-l border-slate-300 dark:border-white/10 bg-slate-950 sm:max-w-md">
-        <SheetHeader className="border-b border-slate-300 dark:border-white/10 pb-4">
+      <SheetContent side="right" className="flex w-full flex-col border-l border-white/10 bg-slate-950 sm:max-w-md">
+        <SheetHeader className="border-b border-white/10 pb-4">
           <SheetTitle className="font-display text-xl text-white">Execute on Hyperliquid</SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-slate-400">Signal #{signalId}</span>
@@ -451,7 +457,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
             }>
               {market} — {sideLabel}
             </Badge>
-            <Badge variant="outline" className="border-slate-400 dark:border-white/15 text-slate-300">{entryKindLabel}</Badge>
+            <Badge variant="outline" className="border-white/15 text-slate-300">{entryKindLabel}</Badge>
             <Badge className="border-amber-300/30 bg-amber-500/20 text-amber-200">TESTNET</Badge>
           </SheetDescription>
         </SheetHeader>
@@ -469,7 +475,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
               { label: "Size USD", value: `$${formatPrice(effectiveSizeUsd)}`, mono: true },
               { label: "Size (asset)", value: `${size > 0 ? size.toFixed(6) : "—"} ${baseAsset}`, mono: true },
             ].map((row) => (
-              <div key={row.label} className="rounded-md border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-2">
+              <div key={row.label} className="rounded-md border border-white/10 bg-slate-900/80 p-2">
                 <p className="text-[10px] uppercase tracking-wide text-slate-500">{row.label}</p>
                 <p className={`text-xs ${row.mono ? "font-mono" : ""} ${row.className ?? "text-slate-100"}`}>
                   {row.value}
@@ -479,8 +485,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
           </div>
 
           {/* Taille customisable */}
-          <div className="rounded-md border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-3 space-y-2">
-            <label className="text-[10px] uppercase tracking-wide text-slate-500 block">
+          <div className="rounded-md border border-white/10 bg-slate-900/80 p-3 space-y-2">
+            <label className="text-[10px] uppercase tracking-wide text-slate-400 block">
               Taille en USD{sizeUsd > 0 ? ` (signal : $${sizeUsd})` : ""}
             </label>
             <div className="flex items-center gap-2">
@@ -492,7 +498,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
                 value={customSizeUsd}
                 onChange={(e) => setCustomSizeUsd(e.target.value)}
                 placeholder={sizeUsd > 0 ? String(sizeUsd) : "ex: 10"}
-                className="flex-1 rounded-md border border-slate-400 dark:border-white/15 bg-white dark:bg-slate-950/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="flex-1 rounded-md border border-white/15 bg-slate-950/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               {sizeUsd > 0 && (
                 <button
@@ -504,12 +510,12 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
               )}
             </div>
             {size > 0 && (
-              <p className="text-[11px] text-slate-400 font-mono dark:text-slate-400">
+              <p className="text-[11px] text-slate-400 font-mono">
                 ≈ {size.toFixed(6)} {baseAsset}
               </p>
             )}
             {isBelowMinSize && minSize !== null && (
-              <div className="flex gap-1.5 items-start rounded-md border border-amber-300/50 bg-amber-50 dark:bg-amber-500/10 p-2 text-[11px] text-amber-700 dark:text-amber-200">
+              <div className="flex gap-1.5 items-start rounded-md border border-amber-300/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
                 <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                 <span>
                   Taille trop petite. Minimum HL : <span className="font-mono font-semibold">{minSize} {baseAsset}</span>
@@ -518,26 +524,34 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
                 </span>
               </div>
             )}
+            {!isBelowMinSize && isBelowMinNotional && (
+              <div className="flex gap-1.5 items-start rounded-md border border-amber-300/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                <span>
+                  Valeur trop faible. Minimum Hyperliquid : <span className="font-mono font-semibold">$10</span> par ordre (actuel : <span className="font-mono font-semibold">${effectiveNotional.toFixed(2)}</span>).
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Explication agent wallet */}
           {!agentApproved && (
-            <div className="rounded-md border border-slate-700 bg-white dark:bg-slate-900/60 p-3 text-xs text-slate-300 space-y-1">
+            <div className="rounded-md border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300 space-y-1">
               <p className="font-semibold text-slate-200 flex items-center gap-1">
                 <KeyRound className="h-3 w-3" /> 2 étapes requises
               </p>
               <p>
-                <span className="text-slate-400">Étape 1 —</span> Approuver un agent wallet temporaire (signature MetaMask sur Arbitrum Sepolia).
+                <span className="text-slate-500">Étape 1 —</span> Approuver un agent wallet temporaire (signature MetaMask sur Arbitrum Sepolia).
               </p>
               <p>
-                <span className="text-slate-400">Étape 2 —</span> Placer l&apos;ordre via l&apos;agent (clé locale, aucune signature MetaMask supplémentaire).
+                <span className="text-slate-500">Étape 2 —</span> Placer l&apos;ordre via l&apos;agent (clé locale, aucune signature MetaMask supplémentaire).
               </p>
             </div>
           )}
 
           {/* Toggle forcer Market si le signal est Limit */}
           {!isMarket && (
-            <label className="flex cursor-pointer items-center gap-3 rounded-md border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/60 p-3 text-xs">
+            <label className="flex cursor-pointer items-center gap-3 rounded-md border border-white/10 bg-slate-900/60 p-3 text-xs">
               <input
                 type="checkbox"
                 checked={forceMarket}
@@ -545,8 +559,8 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
                 className="h-4 w-4 accent-emerald-500"
               />
               <div>
-                <p className="font-semibold text-gray-800 dark:text-slate-200">Forcer ordre Market</p>
-                <p className="text-gray-600 dark:text-slate-400 mt-0.5">
+                <p className="font-semibold text-slate-200">Forcer ordre Market</p>
+                <p className="text-slate-400 mt-0.5">
                   Exécution immédiate au prix du marché — contourne l&apos;erreur &quot;price too far from reference&quot;.
                 </p>
               </div>
@@ -555,7 +569,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
 
           {/* Market order warning */}
           {(isMarket || forceMarket) && (
-            <div className="flex gap-2 rounded-md border border-amber-300/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+            <div className="flex gap-2 rounded-md border border-amber-300/30 bg-amber-500/10 p-3 text-xs text-amber-200">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
               <span>
                 Les ordres Market s&apos;exécutent immédiatement au meilleur prix disponible.
@@ -566,23 +580,23 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
 
           {/* Résultat */}
           {txResult && (
-            <div className="rounded-md border border-emerald-300/30 bg-emerald-500/10 p-3 text-xs text-emerald-100">
+            <div className="rounded-md border border-emerald-300/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
               {txResult}
             </div>
           )}
 
           {/* Erreur */}
           {txError && (
-            <div className="rounded-md border border-rose-300/30 bg-rose-500/10 p-3 text-xs text-rose-100">
+            <div className="rounded-md border border-rose-300/30 bg-rose-500/10 p-3 text-xs text-rose-200">
               {txError}
             </div>
           )}
         </div>
 
-        <SheetFooter className="flex-col gap-2 border-t border-slate-300 dark:border-white/10 pt-4 sm:flex-col">
+        <SheetFooter className="flex-col gap-2 border-t border-white/10 pt-4 sm:flex-col">
           <Button
             variant="outline"
-            className="w-full border-slate-400 dark:border-white/15 bg-white dark:bg-slate-900/70 text-slate-200 hover:bg-slate-800"
+            className="w-full border-white/15 bg-slate-900/70 text-slate-200 hover:bg-slate-800"
             onClick={() => window.open(deepLink, "_blank", "noopener")}
           >
             <ExternalLink className="h-4 w-4" />
@@ -601,7 +615,7 @@ export function HyperliquidTradeSheet({ payload, signalId }: HyperliquidTradeShe
           ) : (
             <Button
               className="w-full bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
-              disabled={step === "trading" || !address || assetIndex === null || isBelowMinSize}
+              disabled={step === "trading" || !address || assetIndex === null || isBelowMinSize || isBelowMinNotional}
               onClick={handleExecuteOrder}
             >
               <Zap className="h-4 w-4" />

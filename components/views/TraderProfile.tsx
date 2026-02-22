@@ -245,7 +245,7 @@ export const TraderProfile: React.FC<{
 
   function renderDecryptedPayload(payload: unknown) {
     if (!payload) {
-      return <p className="text-xs text-gray-600 dark:text-slate-400">No payload</p>;
+      return <p className="text-xs text-gray-500 dark:text-slate-400">No payload</p>;
     }
     if (typeof payload === "string") {
       return <p className="break-all font-mono text-xs text-gray-800 dark:text-slate-200">{payload}</p>;
@@ -274,18 +274,18 @@ export const TraderProfile: React.FC<{
         {rows.length > 0 ? (
           <div className="grid gap-2 md:grid-cols-2">
             {rows.map((row) => (
-              <div key={row.label} className="rounded-md border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/80 p-2">
+              <div key={row.label} className="rounded-md border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-slate-900/80">
                 <p className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-slate-500">{row.label}</p>
-                <p className="break-all font-mono text-xs text-gray-900 dark:text-slate-100">{String(row.value)}</p>
+                <p className="break-all font-mono text-xs font-semibold text-gray-900 dark:text-slate-100">{String(row.value)}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-gray-600 dark:text-slate-400">No mapped fields found. Raw payload below.</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">No mapped fields found. Raw payload below.</p>
         )}
-        <details className="rounded-md border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/70 p-2">
-          <summary className="cursor-pointer text-xs text-gray-700 dark:text-slate-300">Raw decrypted payload (JSON)</summary>
-          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/80 p-2 text-xs text-slate-100">
+        <details className="rounded-md border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-slate-900/70">
+          <summary className="cursor-pointer text-xs text-gray-600 dark:text-slate-300">Raw decrypted payload (JSON)</summary>
+          <pre className="mt-2 max-h-60 overflow-auto rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-gray-800 dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-100">
             {JSON.stringify(data, null, 2)}
           </pre>
         </details>
@@ -411,7 +411,6 @@ export const TraderProfile: React.FC<{
           500
         );
         if (!syncResp.ok) {
-          // Non-blocking: on-chain-first relay catches up from events.
           setSubSuccess(
             `Subscription confirmed on-chain: ${tx.hash}. TEE access sync will be caught up by relay.`
           );
@@ -419,7 +418,6 @@ export const TraderProfile: React.FC<{
           setSubSuccess(`Subscription confirmed: ${tx.hash}`);
         }
       } catch {
-        // Non-blocking: on-chain-first relay catches up from events.
         setSubSuccess(
           `Subscription confirmed on-chain: ${tx.hash}. TEE access sync will be caught up by relay.`
         );
@@ -448,7 +446,7 @@ export const TraderProfile: React.FC<{
       <div className="flex items-center justify-between gap-3">
         <Button
           variant="ghost"
-          className="w-fit px-2 text-slate-300"
+          className="w-fit px-2 text-gray-600 dark:text-slate-300"
           onClick={() => onNavigate(Views.MARKETPLACE)}
         >
           <ArrowLeft className="h-4 w-4" />
@@ -457,13 +455,13 @@ export const TraderProfile: React.FC<{
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card className="glass-panel overflow-hidden border-slate-200 dark:border-slate-300 dark:border-white/10">
+        <Card className="glass-panel overflow-hidden">
           <div className="h-24 bg-mesh-gradient" />
           <CardContent className="space-y-6 p-6">
             <WalletAvatar
               address={trader?.wallet ?? wallet}
               size={96}
-              className="-mt-14 border-4 border-slate-100 dark:border-slate-900"
+              className="-mt-14 border-4 border-white dark:border-slate-900"
             />
 
             <div className="space-y-2">
@@ -473,76 +471,76 @@ export const TraderProfile: React.FC<{
               >
                 {displayName}
               </h1>
-              <p className="max-w-full break-all font-mono text-xs text-gray-600 dark:text-slate-400">
+              <p className="max-w-full break-all font-mono text-xs text-gray-500 dark:text-slate-400">
                 {trader?.wallet ? shortenAddress(trader.wallet, 10, 8) : "Unknown wallet"}
               </p>
-              <Badge className="gap-1 border-red-400/30 bg-red-500/10 text-red-100">
+              <Badge className="gap-1 border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-100">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 On-chain strategy profile
               </Badge>
-              <p className="text-sm text-gray-700 dark:text-slate-300">
+              <p className="text-sm text-gray-600 dark:text-slate-300">
                 Subscribe to the current season to access encrypted signals.
               </p>
             </div>
 
             <Separator />
 
-            <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white/90 dark:bg-white/90 dark:bg-slate-950/70 p-4">
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/70">
               <div className="flex items-end justify-between">
                 <span className="text-sm text-gray-700 dark:text-slate-300">Current season price</span>
-                <span className="font-mono text-2xl text-red-100">{priceDisplay}</span>
+                <span className="font-mono text-2xl text-red-600 dark:text-red-300">{priceDisplay}</span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/80 p-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/80">
                   <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-500">Season</p>
-                  <p className="font-mono text-sm text-gray-950 dark:text-white">
+                  <p className="font-mono text-sm font-semibold text-gray-950 dark:text-white">
                     {season ? `#${season.id.toString()}` : "none"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/80 p-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/80">
                   <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-500">Status</p>
-                  <p className="font-mono text-sm text-gray-950 dark:text-white">
+                  <p className="font-mono text-sm font-semibold text-gray-950 dark:text-white">
                     {season?.status === 0 ? "OPEN" : "CLOSED"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/80 p-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/80">
                   <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-500">Signals</p>
-                  <p className="font-mono text-sm text-gray-950 dark:text-white">{season?.signalCount.toString() ?? "0"}</p>
+                  <p className="font-mono text-sm font-semibold text-gray-950 dark:text-white">{season?.signalCount.toString() ?? "0"}</p>
                 </div>
-                <div className="rounded-lg border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-900/80 p-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900/80">
                   <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-slate-500">Subscribers</p>
-                  <p className="font-mono text-sm text-gray-950 dark:text-white">{season?.subscribers ?? 0}</p>
+                  <p className="font-mono text-sm font-semibold text-gray-950 dark:text-white">{season?.subscribers ?? 0}</p>
                 </div>
               </div>
 
               {loading && <Badge className="w-fit">Loading profile...</Badge>}
               {subError && <Badge variant="destructive">{subError}</Badge>}
               {subSuccess && (
-                <Badge className="whitespace-normal break-all border-emerald-300/30 bg-emerald-400/10 text-emerald-100">
+                <Badge className="whitespace-normal break-all border-emerald-300/30 bg-emerald-400/10 text-emerald-700 dark:text-emerald-100">
                   {subSuccess}
                 </Badge>
               )}
 
               <Button
-                className="w-full bg-red-600 text-gray-950 dark:text-white hover:bg-red-500"
+                className="w-full bg-red-600 text-white hover:bg-red-500"
                 onClick={subscribe}
                 disabled={subscribing || !isConnected || !season || season.status !== 0}
               >
                 {subscribing ? "Subscribing..." : `Subscribe with ${PAYMENT_TOKEN_SYMBOL}`}
               </Button>
 
-              <p className="text-[11px] text-gray-600 dark:text-slate-400">
+              <p className="text-[11px] text-gray-500 dark:text-slate-400">
                 Approval is done only if required. Amount uses {PAYMENT_TOKEN_DECIMALS} token decimals.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="border-slate-300 dark:border-slate-400 dark:border-white/15 bg-white/90 dark:bg-white/90 dark:bg-slate-950/70">
+              <Button variant="outline" className="border-slate-300 bg-white dark:border-white/15 dark:bg-slate-950/70">
                 <ExternalLink className="h-4 w-4" />
                 Arbiscan
               </Button>
-              <Button variant="outline" className="border-slate-300 dark:border-slate-400 dark:border-white/15 bg-white/90 dark:bg-white/90 dark:bg-slate-950/70">
+              <Button variant="outline" className="border-slate-300 bg-white dark:border-white/15 dark:bg-slate-950/70">
                 <Share2 className="h-4 w-4" />
                 Share
               </Button>
@@ -551,7 +549,7 @@ export const TraderProfile: React.FC<{
         </Card>
 
         <div className="space-y-6">
-          <Card className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
+          <Card className="glass-panel">
             <CardHeader>
               <CardTitle className="font-display text-xl text-gray-950 dark:text-white">Public history</CardTitle>
               <CardDescription>
@@ -586,7 +584,7 @@ export const TraderProfile: React.FC<{
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-slate-300 dark:border-slate-400 dark:border-white/15 bg-white/90 dark:bg-white/90 dark:bg-slate-950/70"
+                              className="border-slate-300 bg-white dark:border-white/15 dark:bg-slate-950/70"
                               onClick={() => decryptPublicSignal(row)}
                               disabled={decrypting[key]}
                             >
@@ -597,12 +595,12 @@ export const TraderProfile: React.FC<{
                         {(decryptErrors[key] || decryptedResults[key]) && (
                           <TableRow>
                             <TableCell colSpan={5}>
-                              <div className="space-y-2 rounded-md border border-slate-200 dark:border-slate-300 dark:border-white/10 bg-slate-50/70 dark:bg-slate-50/70 dark:bg-slate-950/60 p-3">
+                              <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-slate-950/60">
                                 {decryptErrors[key] && (
                                   <Badge variant="destructive">{decryptErrors[key]}</Badge>
                                 )}
                                 {decryptedResults[key]?.selectedApp && (
-                                  <p className="text-[11px] text-gray-600 dark:text-slate-400">
+                                  <p className="text-[11px] text-gray-500 dark:text-slate-400">
                                     app: {decryptedResults[key]?.selectedAppName ? `${decryptedResults[key]?.selectedAppName} ` : ""}
                                     <span className="font-mono">{decryptedResults[key]?.selectedApp}</span>
                                   </p>
@@ -620,7 +618,7 @@ export const TraderProfile: React.FC<{
                   })}
                   {publicHistory.length === 0 && !loading && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-sm text-slate-400">
+                      <TableCell colSpan={5} className="text-sm text-gray-500 dark:text-slate-400">
                         No public signals yet. Close a season to make its signals public here.
                       </TableCell>
                     </TableRow>

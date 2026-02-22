@@ -178,15 +178,15 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
         </p>
       </div>
 
-      <Card className="glass-panel border-slate-200 dark:border-slate-300 dark:border-white/10">
+      <Card className="glass-panel">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600 dark:text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-slate-400" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search pseudo or wallet"
-              className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-950/80 pl-9"
+              className="h-10 border-slate-300 bg-white pl-9 dark:border-white/10 dark:bg-slate-950/80"
             />
           </div>
 
@@ -195,7 +195,7 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
               value={filterState ?? "all"}
               onValueChange={(value) => setFilterState(value === "all" ? null : value)}
             >
-              <SelectTrigger className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-950/80">
+              <SelectTrigger className="h-10 border-slate-300 bg-white dark:border-white/10 dark:bg-slate-950/80">
                 <SelectValue placeholder="Season status" />
               </SelectTrigger>
               <SelectContent>
@@ -211,7 +211,7 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
 
           <Button
             variant="outline"
-            className="h-10 border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white dark:bg-white dark:bg-slate-950/80"
+            className="h-10 border-slate-300 bg-white dark:border-white/10 dark:bg-slate-950/80"
             onClick={() => {
               setSearchTerm("");
               setFilterState(null);
@@ -224,13 +224,13 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
 
       {error && (
         <Card className="border-rose-400/30 bg-rose-500/10">
-          <CardContent className="p-4 text-sm text-rose-200">{error}</CardContent>
+          <CardContent className="p-4 text-sm text-rose-700 dark:text-rose-200">{error}</CardContent>
         </Card>
       )}
 
       {loading && (
         <Card className="border-red-400/25 bg-red-500/10">
-          <CardContent className="p-4 text-sm text-red-100">Loading on-chain traders...</CardContent>
+          <CardContent className="p-4 text-sm text-red-700 dark:text-red-100">Loading on-chain traders...</CardContent>
         </Card>
       )}
 
@@ -244,7 +244,7 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
                 traderAddr: trader.wallet,
               })
             }
-            className="group cursor-pointer border-slate-200 dark:border-slate-300 dark:border-white/10 bg-white/50 dark:bg-slate-950/50 transition duration-300 hover:-translate-y-1 hover:border-red-400/40 hover:bg-white dark:hover:bg-white dark:bg-slate-900/70"
+            className="group cursor-pointer border-slate-200 bg-white/80 transition duration-300 hover:-translate-y-1 hover:border-red-400/40 hover:bg-white dark:border-white/10 dark:bg-slate-900/70 dark:hover:bg-slate-900"
           >
             <CardHeader className="space-y-4 pb-4">
               <div className="flex items-start justify-between">
@@ -254,48 +254,48 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
                     <CardTitle className="truncate font-display text-lg text-gray-950 dark:text-white" title={trader.pseudo}>
                       {trader.pseudo}
                     </CardTitle>
-                    <CardDescription className="truncate text-xs" title={trader.wallet}>
+                    <CardDescription className="truncate text-xs text-gray-500 dark:text-slate-400" title={trader.wallet}>
                       {shortenAddress(trader.wallet, 8, 6)}
                     </CardDescription>
                   </div>
                 </div>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-600 dark:text-slate-400 transition group-hover:text-red-200" />
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-500 dark:text-slate-400 transition group-hover:text-red-500 dark:group-hover:text-red-300" />
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Badge className="border-red-400/30 bg-red-500/10 text-red-100">
+                <Badge className="border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-100">
                   {trader.statusLabel}
                 </Badge>
-                <Badge variant="outline" className="border-slate-300 dark:border-slate-400 dark:border-white/15 text-gray-700 dark:text-slate-300">
+                <Badge variant="outline" className="border-slate-300 text-gray-600 dark:border-white/15 dark:text-slate-300">
                   season #{trader.currentSeasonId || "-"}
                 </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="space-y-4 pt-0">
-              <p className="line-clamp-2 text-sm text-slate-300">{trader.description}</p>
+              <p className="line-clamp-2 text-sm text-gray-600 dark:text-slate-300">{trader.description}</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-2">
-                  <p className="font-mono text-[10px] uppercase text-slate-500">Signals</p>
-                  <p className="text-slate-200">{trader.signalCount}</p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-slate-900/80">
+                  <p className="font-mono text-[10px] uppercase text-gray-500 dark:text-slate-500">Signals</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{trader.signalCount}</p>
                 </div>
-                <div className="rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900/80 p-2">
-                  <p className="font-mono text-[10px] uppercase text-slate-500">Subs</p>
-                  <p className="text-slate-200">{trader.subscribers}</p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-slate-900/80">
+                  <p className="font-mono text-[10px] uppercase text-gray-500 dark:text-slate-500">Subs</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{trader.subscribers}</p>
                 </div>
               </div>
 
               <div className="flex items-end justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase text-slate-500">Season price</p>
+                  <p className="text-[11px] uppercase text-gray-500 dark:text-slate-500">Season price</p>
                   <p
-                    className="truncate font-mono text-lg text-red-100"
+                    className="truncate font-mono text-lg text-red-600 dark:text-red-300"
                     title={`${trader.subscriptionPrice} ${PAYMENT_TOKEN_SYMBOL}`}
                   >
                     {Number(trader.subscriptionPrice).toFixed(2)} {PAYMENT_TOKEN_SYMBOL}
                   </p>
                 </div>
-                <Badge variant="outline" className="border-red-400/30 text-red-200">
+                <Badge variant="outline" className="border-red-400/30 text-red-600 dark:text-red-200">
                   Open profile
                 </Badge>
               </div>
@@ -304,8 +304,8 @@ export const Marketplace: React.FC<{ onNavigate: (view: Views, params?: any) => 
         ))}
 
         {filtered.length === 0 && !loading && (
-          <Card className="border-slate-300 dark:border-white/10 bg-slate-50/70 dark:bg-slate-950/60 md:col-span-2 xl:col-span-3">
-            <CardContent className="p-8 text-center text-sm text-slate-400">
+          <Card className="border-slate-200 bg-white/70 md:col-span-2 xl:col-span-3 dark:border-white/10 dark:bg-slate-950/60">
+            <CardContent className="p-8 text-center text-sm text-gray-500 dark:text-slate-400">
               No trader found with current filters.
             </CardContent>
           </Card>
